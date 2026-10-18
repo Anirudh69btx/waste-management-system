@@ -1,0 +1,8 @@
+[run]
+concurrency = greenlet, thread
+source = app
+omit =
+    app/tests/*
+
+[report]
+show_missing = True

@@ -1,0 +1,199 @@
+# =============================================================================
+# Circular Waste Marketplace — Docker Compose
+# =============================================================================
+# Usage (dev):
+#   Copy-Item .env.example .env   (Windows PS)
+#   docker compose up --build
+#
+# 7 services:
+#   postgres      — PostgreSQL 15 data store
+#   redis         — Redis 7 cache + Celery broker
+#   minio         — S3-compatible object storage (dev)
+#   backend       — FastAPI + Uvicorn (hot-reload)
+#   celery-worker — Celery async task worker
+#   celery-beat   — Celery periodic scheduler
+#   frontend      — React + Vite dev server (HMR)
+# =============================================================================
+
+name: circular-waste-marketplace
+
+networks:
+  cwm-net:
+    driver: bridge
+
+volumes:
+  pgdata:      # Postgres data — survives 'docker compose down', wiped by '-v'
+  redisdata:   # Redis persistence
+  miniodata:   # MinIO object storage
+
+services:
+
+  # ── PostgreSQL 15 ──────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15.7-alpine
+    container_name: cwm-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    networks:
+      - cwm-net
+
+  # ── Redis 7 ───────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7.4-alpine
+    container_name: cwm-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    networks:
+      - cwm-net
+
+  # ── MinIO (S3-compatible dev storage) ─────────────────────────────────────
+  minio:
+    image: cgr.dev/chainguard/minio:latest
+    container_name: cwm-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - cwm-net
+
+  # ── FastAPI Backend (Uvicorn, hot-reload) ─────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: cwm-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      RUN_MIGRATIONS: "true"
+      PYTHONPATH: /app
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__     # Prevent host __pycache__ from overriding container's
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    networks:
+      - cwm-net
+
+  # ── Celery Worker ──────────────────────────────────────────────────────────
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: cwm-celery-worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      RUN_MIGRATIONS: "false"
+      PYTHONPATH: /app
+    # celery_app is defined inside app/workers/tasks.py
+    command: ["celery", "-A", "app.workers.tasks:celery_app", "worker", "--loglevel=info", "--concurrency=2"]
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cwm-net
+
+  # ── Celery Beat (Periodic Scheduler) ──────────────────────────────────────
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: cwm-celery-beat
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      RUN_MIGRATIONS: "false"
+      PYTHONPATH: /app
+    command: ["celery", "-A", "app.workers.tasks:celery_app", "beat", "--loglevel=info"]
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cwm-net
+
+  # ── React + Vite Frontend (HMR) ────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: cwm-frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+      VITE_WS_BASE_URL: ${VITE_WS_BASE_URL}
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules    # Anonymous volume prevents host node_modules override
+    networks:
+      - cwm-net

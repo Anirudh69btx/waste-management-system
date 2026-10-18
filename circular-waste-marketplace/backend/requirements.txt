@@ -1,0 +1,86 @@
+# =============================================================================
+# Circular Waste Marketplace — Backend Production Dependencies
+# =============================================================================
+# Pinned versions for reproducibility. Grouped by function.
+# Run: pip install -r requirements.txt
+# Dev extras: pip install -r requirements-dev.txt
+# Security audit: pip-audit -r requirements.txt
+# =============================================================================
+
+# --- Core Web Framework ---
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+gunicorn==22.0.0                    # Production WSGI/ASGI process manager
+python-multipart==0.0.12            # Multipart form-data (file uploads)
+starlette==0.41.3                   # FastAPI dependency (pin to match fastapi)
+
+# --- Data Validation & Settings ---
+pydantic==2.9.2
+pydantic-settings==2.6.1
+pydantic[email]==2.9.2              # Email validation support
+python-dotenv==1.0.1
+
+# --- Database (Async) ---
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0                     # Async PostgreSQL driver (primary)
+alembic==1.14.0                     # Schema migration tool
+psycopg2-binary==2.9.10             # Sync PostgreSQL driver (Alembic env only)
+geoalchemy2==0.16.0                 # PostGIS spatial types for SQLAlchemy
+
+# --- Cache & Message Queue ---
+redis==5.2.0
+celery[redis]==5.4.0
+flower==2.0.1                       # Celery monitoring dashboard
+kombu==5.4.0                        # Celery messaging library (pin for compat)
+
+# --- Authentication & Security ---
+python-jose[cryptography]==3.3.0    # JWT encoding/decoding (HS256)
+passlib[bcrypt]==1.7.4              # Password hashing abstraction
+bcrypt==4.2.0                       # bcrypt backend for passlib
+itsdangerous==2.2.0                 # HMAC signing (QR manifests, tokens)
+cryptography==43.0.3                # python-jose dependency
+
+# --- HTTP Clients ---
+httpx==0.27.2                       # Async HTTP client (Gemini API, webhooks)
+tenacity==9.0.0                     # Retry logic with exponential backoff
+
+# --- Object Storage ---
+boto3==1.35.66                      # AWS S3 / MinIO (S3-compatible) client
+minio==7.2.11                       # MinIO Python SDK
+botocore==1.35.66                   # boto3 dependency (pin for compat)
+
+# --- Image Processing & AI/ML ---
+numpy==2.1.3
+pillow==11.0.0                      # Image open/resize/EXIF strip
+opencv-python-headless==4.10.0.84   # Blur detection (Laplacian variance), quality
+scikit-learn==1.5.2                 # Heuristic fallbacks, feature scaling
+onnxruntime==1.20.1                 # ONNX model inference (CPU, no GPU required)
+imagehash==4.3.1                    # Perceptual duplicate-hash detection
+
+# --- QR Code Generation ---
+qrcode[pil]==8.0                    # QR code generation with Pillow backend
+
+# --- Observability & Logging ---
+structlog==24.4.0                   # Structured JSON logging
+prometheus-fastapi-instrumentator==7.0.0  # Prometheus /metrics endpoint
+sentry-sdk[fastapi]==2.18.0         # Error tracking and performance monitoring
+opentelemetry-api==1.28.1           # OpenTelemetry instrumentation hooks
+opentelemetry-sdk==1.28.1
+
+# --- Payments ---
+stripe==11.3.0
+# razorpay==1.4.2                   # Uncomment for India-only Razorpay integration
+
+# --- Maps (Optional) ---
+# googlemaps==4.10.0                # Uncomment if switching to Google Maps
+
+# --- Utilities ---
+python-slugify==8.0.4               # URL-safe slug generation for listings
+email-validator==2.2.0              # RFC-5322 email validation
+phonenumbers==8.13.48               # E.164 phone number parsing/validation
+python-dateutil==2.9.0.post0        # Flexible date parsing
+pytz==2024.2                        # Timezone handling
+
+# --- Rate Limiting ---
+slowapi==0.1.10                     # Rate limiting with Redis/in-memory backend
+
