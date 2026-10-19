@@ -36,12 +36,14 @@ from app.models import (
     MarketplaceListing,
     ListingStatus,
     WastePurityGrade,
-    EcoStoreProduct,
+    EcoProduct,
+    EcoProductCategory,
     RewardWallet,
 )
+from sqlalchemy import select
+import re
 
 settings = get_settings()
-
 
 async def seed() -> None:
     engine = create_async_engine(settings.database_url, echo=False)
@@ -53,26 +55,48 @@ async def seed() -> None:
 
     async with async_session() as session:
         print("Seeding canonical waste categories...")
+        # Fetch existing category codes for idempotency
+        existing_result = await session.execute(select(WasteCategory.code))
+        existing_codes = {row[0] for row in existing_result.scalars().all()}
+        print(f"Found {len(existing_codes)} existing categories, skipping duplicates.")
         categories_data = [
-            ("ORGANIC_BIOMASS", "Organic & Food Waste", "Fruit peels, vegetables, raw food scraps, biodegradable hotel waste", 3.50),
-            ("PLASTIC_PET", "PET Plastics (Grade 1)", "Clean water bottles, soft drink containers, thermoformed sheets", 18.00),
-            ("PAPER_CARDBOARD", "Corrugated Cardboard & Paper", "Corrugated shipping cartons, clean kraft paper, shredded paper", 9.50),
-            ("FERROUS_METAL", "Ferrous Scrap Metal", "Tin cans, steel straps, light iron scrap, construction rebar offcuts", 28.00),
-            ("GLASS", "Cullet & Bottle Glass", "Flint (clear), amber, and green glass beverage containers", 4.00),
-            ("E_WASTE", "Electronic Waste (Non-hazardous)", "Printed circuit boards, cables, adapters, obsolete IT peripherals", 65.00),
-            ("HAZARDOUS", "Industrial Hazardous Waste", "Battery scrap, paint sludge, used oil containers (manifest regulated)", 12.00),
-            ("TEXTILE", "Industrial Textile & Fabric Offcuts", "Cotton rags, synthetic trimmings, apparel factory spinning waste", 14.00),
+            ("ORGANIC_BIOMASS", "Organic & Food Waste", 3.50),
+            ("PLASTIC_PET", "PET Plastics (Grade 1)", 18.00),
+            ("PAPER_CARDBOARD", "Corrugated Cardboard & Paper", 9.50),
+            ("FERROUS_METAL", "Ferrous Scrap Metal", 28.00),
+            ("GLASS", "Cullet & Bottle Glass", 4.00),
+            ("E_WASTE", "Electronic Waste (Non-hazardous)", 65.00),
+            ("HAZARDOUS", "Industrial Hazardous Waste", 12.00),
+            ("TEXTILE", "Industrial Textile & Fabric Offcuts", 14.00),
         ]
 
         cat_map: dict[str, WasteCategory] = {}
-        for code, name, desc, base_price in categories_data:
-            cat = WasteCategory(code=code, name=name, description=desc, base_price_per_kg=base_price, is_active=True)
+        for code, name, carbon_offset in categories_data:
+            if code in existing_codes:
+                print(f"  Skipping category (exists): {code}")
+                existing_result = await session.execute(
+                    select(WasteCategory).where(WasteCategory.code == code)
+                )
+                cat_map[code] = existing_result.scalar_one()
+                continue
+            cat = WasteCategory(
+                code=code,
+                name=name,
+                unit_of_measure="kg",
+                carbon_offset_factor=carbon_offset,
+                is_active=True,
+            )
             session.add(cat)
             cat_map[code] = cat
+            print(f"  Inserting category: {code}")
 
         await session.flush()
 
         print("Seeding demo users...")
+        # Fetch existing user emails for idempotency
+        existing_user_result = await session.execute(select(User.email))
+        existing_emails = {row[0] for row in existing_user_result.scalars().all()}
+        print(f"Found {len(existing_emails)} existing users, skipping duplicates.")
         users = [
             ("admin@cwm.io", "Platform Administrator", UserRole.ADMIN, "CWM Operations Central", "+919876543210"),
             ("supplier@cwm.io", "Green Earth Organics Ltd", UserRole.GENERATOR, "Green Earth Farms & Food", "+919876543211"),
@@ -125,9 +149,9 @@ async def seed() -> None:
         for code, cat in cat_map.items():
             rule = PricingRule(
                 category_id=cat.id,
-                base_benchmark=cat.base_price_per_kg,
-                floor_price=round(cat.base_price_per_kg * 0.5, 2),
-                ceiling_price=round(cat.base_price_per_kg * 1.8, 2),
+                base_benchmark_price_per_kg=cat.carbon_offset_factor,
+                floor_price_per_kg=round(cat.carbon_offset_factor * 0.5, 2),
+                ceiling_price_per_kg=round(cat.carbon_offset_factor * 1.8, 2),
                 moisture_benchmark_percent=8.0 if "ORGANIC" in code else 2.0,
                 moisture_penalty_per_percent=0.015,
                 contamination_benchmark_percent=1.0,
@@ -170,15 +194,23 @@ async def seed() -> None:
         ]
 
         for title, desc, price, stock, cat_name, unit, weight in eco_products:
-            prod = EcoStoreProduct(
+            # Map category name to EcoProductCategory enum (default COMPOST)
+            try:
+                category_enum = EcoProductCategory[cat_name.upper()]
+            except KeyError:
+                category_enum = EcoProductCategory.COMPOST
+            # Generate slug from title
+            slug = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
+            prod = EcoProduct(
                 title=title,
+                slug=slug,
                 description=desc,
-                price=price,
+                category=category_enum,
+                price_fiat=price,
                 stock_quantity=stock,
-                category=cat_name,
-                unit=unit,
-                weight_kg=weight,
-                is_active=True,
+                carbon_offset_kg=0.0,
+                image_url='https://example.com/placeholder.png',
+                is_featured=False,
             )
             session.add(prod)
 

@@ -437,7 +437,72 @@ python -m pytest app/tests/ --cov=app --cov=ai_engine --cov-report=term-missing
 
 ### Coverage Target
 - `ai_engine/`: **100% test scenario coverage** (pure-Python, no GPU required).
-- `app/routers/` & `app/services/`: **≥ 80% coverage** across authentication, RBAC authorization, and pricing logic.
+- `app/routers/` & `app/services/`: **≥ 80% coverage** across authentication, RBAC authorization, and pricing logic (95/95 passing).
+- `frontend/`: **25 unit and component tests passing** across Zustand auth store, route guards, Login/Register forms, and single-flight Axios interceptor.
+
+---
+
+## 💻 Frontend Application Architecture (Segment 1.4)
+
+### 1. Frontend Quickstart
+- **Environment Variables**: Defined in `frontend/.env.example` (embedded into client bundle by Vite):
+  - `VITE_API_BASE_URL` — `http://localhost:8000/api/v1` (backend REST root)
+  - `VITE_WS_BASE_URL` — `ws://localhost:8000` (realtime telemetry socket)
+  - `VITE_APP_NAME` — `"Circular Waste Marketplace"`
+  - `VITE_ENABLE_DEVTOOLS` — `"true"` in dev, `"false"` in prod
+- **Docker Dev Server**:
+  ```bash
+  docker compose up -d frontend
+  ```
+- **Local Dev Server (outside Docker)**:
+  ```bash
+  cd frontend
+  npm install
+  npm run dev
+  ```
+- **Reach dev server at**: `http://localhost:5173`
+
+### 2. Auth Flow in UI
+1. **Land on `/`**: Visitor sees high-impact hero with dynamic CTAs ("Get Started", "Sign In").
+2. **Click "Get Started"**: Navigates to `/register`. Selects public persona (`GENERATOR`, `RECYCLER`, or `LOGISTICS`; `ADMIN` is strictly omitted).
+3. **Submit Registration**: Validates inputs with Zod. Backend provisions user and issues initial token pair.
+4. **Auto-Login**: Client stores tokens, initializes authenticated state, and triggers welcome toast.
+5. **Redirect to `/dashboard`**: Lands on protected dashboard with live persona badge and active session indicators.
+
+### 3. Route Guards
+- `<RequireAuth>`: Guards protected pages. Unauthenticated sessions are redirected to `/login` with `state.from` for post-login bounce-back.
+- `<PublicOnly>`: Guards `/login` and `/register`. Authenticated users are bounced to `/dashboard`.
+- `<RequireRole roles={[...]}>`: Client UX gate. Unauthorized personas render a `403 Forbidden` page in-place preserving the target URL. `ADMIN` role implicitly bypasses client role gates.
+> **IMPORTANT SECURITY NOTE:**  
+> **Client-side guards are UX only. Backend RBAC is the real security control. Never rely on guards alone to protect data.**
+
+### 4. Design System (Dark + Green)
+- **Palette**: Defined in `tailwind.config.js` and `frontend/src/index.css`:
+  - `bg-base` (`#030712`), `bg-surface` (`#0f172a`), `bg-elevated` (`#1e293b`)
+  - `border-subtle` (`#1e293b`), `border-strong` (`#334155`)
+  - `text-primary` (`#f8fafc`), `text-secondary` (`#94a3b8`), `text-muted` (`#64748b`)
+  - `brand-50` through `brand-950` (Emerald ramp)
+  - `glow-brand`, `brand-gradient`
+- **Contrast**: All primary text/background pairs exceed WCAG AA ($\ge 4.5:1$ normal text; measured $\ge 14:1$).
+- **Adding Colors**: Add token to `theme.extend.colors` in `tailwind.config.js`, map to CSS variable in `index.css`, verify contrast $\ge 4.5:1$.
+
+### 5. Token Storage & Security Warning
+- **Current Strategy (Segment 1.4 demo-acceptable)**: Tokens are stored in browser `localStorage` (`cwm.accessToken`, `cwm.refreshToken`).
+- **XSS Risk & Current Mitigations**:
+  - `localStorage` is accessible to scripts if XSS occurs.
+  - Mitigated by strict CSP headers (`script-src 'self'`), zero `dangerouslySetInnerHTML`, zero `eval()`, backend token rotation with single-flight mutex, and backend replay attack session invalidation.
+- **Production Migration Plan (Segment 1.8+)**:
+  - Migrate tokens to `HttpOnly; Secure; SameSite=Strict` cookies.
+  - Implement double-submit CSRF tokens.
+  - Implement Backend-for-Frontend (BFF) proxy pattern.
+
+### 6. Frontend Testing
+Run the complete Vitest test suite:
+```bash
+cd frontend
+npm test
+```
+All 25 tests pass covering store hydration, token rotation, route guards, form validations, and single-flight Axios refresh logic.
 
 ---
 
@@ -470,30 +535,22 @@ python -m pytest app/tests/ --cov=app --cov=ai_engine --cov-report=term-missing
 
 ---
 
-## ⏳ Pending Implementation Phases (Segments 1.2+)
+## ⏳ Status & Implementation Delivery
 
-> **Status Notice**: Segment 1.1 (Docker & Project Setup) is complete and operational. The remaining architectural segments will be delivered sequentially:
+> **Status Notice**: Segments 1.1 (Docker), 1.2 (FastAPI + PostgreSQL), 1.3 (Auth + RBAC), and 1.4 (React, Tailwind & Auth UI) are COMPLETE, VERIFIED, and OPERATIONAL:
+> - 7/7 containers healthy in Docker Compose
+> - 95/95 backend tests passing
+> - 25/25 frontend tests passing
+> - Full end-to-end authentication UI (Landing, Register, Login, Dashboard, Logout, Route Guards)
 
-- **Segment 1.2**: Project Hygiene, Static Analysis, CI/CD Pipeline (Ruff, ESLint, Prettier, GitHub Actions workflow).
-- **Segment 2**: Database Schema Design, PostGIS Spatial Extensions, and Alembic Versioning.
-- **Segment 3**: Core Domain Schemas, Pydantic Request/Response Models, and Validation.
-- **Segment 4**: Authentication, JWT Token Lifecycle, Argon2 Password Hashing, and RBAC Guards.
-- **Segment 5**: AI Engine Modules (Laplacian Blur Gate, HSV/ONNX Classifier, Dynamic Formula Engine, Biogas Estimator).
-- **Segment 6**: Backend Business Services & Asynchronous Task Queues (Intake, Pricing, Pickups, Marketplace).
-- **Segment 7**: Versioned REST API Endpoints & OpenAPI Documentation Integration.
-- **Segment 8**: React Web Application, Role Personas, and Interactive Workspaces.
-- **Segment 9**: End-to-End Integration, Observability (Prometheus, Structured Logs), and Security Hardening.
-- **Segment 10**: Live Demo Seeding, Synthetic Simulation Runs, and Production Handoff.
-
----
-
-## 🗺️ Roadmap & Evolution
-
-- [x] **Segment 1.1**:
-  - [x] Production Docker Compose orchestration (PostgreSQL 15 + PostGIS, FastAPI, React/Vite).
-  - [x] Pinned container images, health checks, named persistent volumes.
-  - [x] Vite polling-based HMR on Windows/WSL2 host mounts.
-  - [x] 12-factor environment discipline (`.env.example` vs `.env`).
+- [x] **Segment 1.1**: Production Docker Compose orchestration (PostgreSQL 15, FastAPI, React/Vite, Redis, Celery, MinIO).
+- [x] **Segment 1.2**: FastAPI + PostgreSQL DB foundation (Async engine, Alembic lifecycle, structured logging, health checks).
+- [x] **Segment 1.3**: Authentication & Authorization (Dual secrets, JWT + rotating refresh tokens with replay defense, slowapi rate limits, RBAC).
+- [x] **Segment 1.4**: React, Tailwind & Auth UI (Dark/green design system, Axios client with single-flight refresh, Zustand store, route guards, complete auth UI, 25 tests).
+- [ ] **Segment 1.5**: Waste Categories, Supplier Intake & Pricing Engine.
+- [ ] **Segment 1.6**: Logistics Telemetry, QR Manifests & Realtime Tracking.
+- [ ] **Segment 1.7**: Certified Feedstock Marketplace, Escrow & Settlements.
+- [ ] **Segment 1.8**: Green Loyalty Rewards & Production Cookie/BFF Migration.
 - [ ] **v1.1**:
   - [ ] Fine-tuned YOLOv8 model for automated multi-class waste object detection.
   - [ ] IoT weighbridge serial driver integration via MQTT gateway.

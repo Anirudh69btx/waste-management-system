@@ -1,112 +1,137 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import {
-  Recycle,
-  ShieldCheck,
-  Cpu,
-  TrendingUp,
-  Truck,
   Sparkles,
   ArrowRight,
+  TrendingUp,
+  Truck,
+  Award,
+  ShieldCheck,
   CheckCircle2,
-  Lock,
 } from "lucide-react";
+
+import { useAuthStore } from "@/features/auth/store";
 import { Button } from "@/components/Button";
-import { Badge } from "@/components/Badge";
 
 export const HomePage: React.FC = () => {
+  const { isAuthenticated, user } = useAuthStore();
+  const authed = isAuthenticated();
+  const appName = import.meta.env.VITE_APP_NAME || "Circular Waste Marketplace";
+
   return (
-    <div className="space-y-16 py-4">
+    <div className="space-y-20 py-8 text-text-primary">
       {/* Hero Section */}
-      <div className="relative text-center max-w-4xl mx-auto space-y-6 pt-8">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-500/10 border border-brand-500/20 text-xs font-semibold text-brand-400">
+      <section className="relative text-center max-w-4xl mx-auto space-y-6 pt-10">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-500/10 border border-brand-500/20 text-xs font-semibold text-brand-400">
           <Sparkles className="h-4 w-4" />
-          <span>Next-Generation Secondary Material Marketplace</span>
+          <span>Industrial Secondary Resource Exchange</span>
         </div>
 
         <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-tight">
-          Turn Segregated Waste into{" "}
-          <span className="gradient-text">High-Purity Circular Feedstock</span>
+          Recycle smarter. Earn more.{" "}
+          <span className="gradient-text">Save the planet.</span>
         </h1>
 
-        <p className="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
-          Empowering suppliers, sorters, and industrial buyers with automated AI quality gating,
-          dynamic benchmark pricing, real-time custody tracking, and escrow settlement.
+        <p className="text-base sm:text-lg text-text-secondary max-w-2xl mx-auto leading-relaxed">
+          The verified circular marketplace connecting waste generators, recyclers, and logistics
+          fleets with transparent pricing, quality-gated materials, and authenticated chain-of-custody.
         </p>
 
-        <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
-          <Link to="/intake">
-            <Button size="lg">
-              <span>Submit Waste Batch</span>
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
-          <Link to="/marketplace">
-            <Button variant="secondary" size="lg">
-              <span>Browse Certified Feedstock</span>
-            </Button>
-          </Link>
+        {/* CTAs */}
+        <div className="flex flex-wrap items-center justify-center gap-4 pt-3">
+          {authed ? (
+            <Link to="/dashboard">
+              <Button size="lg" className="shadow-glow-brand">
+                <span>Go to Dashboard ({user?.role})</span>
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          ) : (
+            <>
+              <Link to="/register">
+                <Button size="lg" className="shadow-glow-brand">
+                  <span>Get Started</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+              <Link to="/login">
+                <Button variant="secondary" size="lg">
+                  <span>Sign In</span>
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
 
-        {/* Trust Badges */}
-        <div className="pt-8 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-400">
+        {/* Value Badges */}
+        <div className="pt-6 flex flex-wrap items-center justify-center gap-6 text-xs text-text-muted">
           <span className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-400" /> AI Laplacian Quality Gating
+            <CheckCircle2 className="h-4 w-4 text-brand-400" />
+            <span>AI Purity Grading</span>
           </span>
           <span className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Scientific BMP Biogas Yield
+            <CheckCircle2 className="h-4 w-4 text-brand-400" />
+            <span>Real-time Custody Tracking</span>
           </span>
           <span className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Cryptographic QR Custody
+            <CheckCircle2 className="h-4 w-4 text-brand-400" />
+            <span>Role-Based Access Control</span>
           </span>
           <span className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Automated Escrow Payouts
+            <ShieldCheck className="h-4 w-4 text-brand-400" />
+            <span>Token Rotation & Replay Defense</span>
           </span>
         </div>
-      </div>
+      </section>
 
-      {/* 4 Pillars Architecture */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="glass-card glass-card-hover rounded-2xl p-6 border border-white/10 space-y-3">
+      {/* 3 Core Features Grid */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        {/* Feature 1: Waste Tracking */}
+        <div className="glass-card glass-card-hover rounded-2xl p-6 border border-border-subtle space-y-3">
           <div className="h-12 w-12 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-400">
-            <Cpu className="h-6 w-6" />
+            <Truck className="h-6 w-6" />
           </div>
-          <h3 className="text-base font-bold text-white">AI Vision & Quality Gate</h3>
-          <p className="text-xs text-slate-400 leading-relaxed">
-            Laplacian blur detection, brightness evaluation, resolution gates, and ONNX classification ensure only clean feedstock enters the pipeline.
+          <h2 className="text-base font-bold text-white">Waste Tracking & Custody</h2>
+          <p className="text-xs text-text-secondary leading-relaxed">
+            Live GPS telemetry, QR manifest verification, and tamper-resistant chain-of-custody
+            from generator intake to certified processing yards.
           </p>
         </div>
 
-        <div className="glass-card glass-card-hover rounded-2xl p-6 border border-white/10 space-y-3">
+        {/* Feature 2: Fair Pricing */}
+        <div className="glass-card glass-card-hover rounded-2xl p-6 border border-border-subtle space-y-3">
           <div className="h-12 w-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
             <TrendingUp className="h-6 w-6" />
           </div>
-          <h3 className="text-base font-bold text-white">Dynamic Pricing Engine</h3>
-          <p className="text-xs text-slate-400 leading-relaxed">
-            Market-aligned ₹/kg pricing algorithm adjusting for moisture content variance, contamination deductions, and purity grades.
+          <h2 className="text-base font-bold text-white">Fair Dynamic Pricing</h2>
+          <p className="text-xs text-text-secondary leading-relaxed">
+            Scientific pricing engine calibrated against benchmark indices, purity grades, and moisture
+            content deductions for maximum market transparency.
           </p>
         </div>
 
-        <div className="glass-card glass-card-hover rounded-2xl p-6 border border-white/10 space-y-3">
-          <div className="h-12 w-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
-            <Truck className="h-6 w-6" />
+        {/* Feature 3: Green Rewards */}
+        <div className="glass-card glass-card-hover rounded-2xl p-6 border border-border-subtle space-y-3">
+          <div className="h-12 w-12 rounded-xl bg-brand-400/10 border border-brand-400/20 flex items-center justify-center text-brand-400">
+            <Award className="h-6 w-6" />
           </div>
-          <h3 className="text-base font-bold text-white">Custody & Live Tracking</h3>
-          <p className="text-xs text-slate-400 leading-relaxed">
-            HMAC-SHA256 signed QR manifests, live vehicle GPS telemetry via Redis Pub/Sub, and weighbridge tare calibration.
+          <h2 className="text-base font-bold text-white">Green Rewards Wallet</h2>
+          <p className="text-xs text-text-secondary leading-relaxed">
+            Earn eco-points and circular loyalty incentives for segregated feedstock batches, redeemable
+            against eco-products and processing discounts.
           </p>
         </div>
+      </section>
 
-        <div className="glass-card glass-card-hover rounded-2xl p-6 border border-white/10 space-y-3">
-          <div className="h-12 w-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
-            <Lock className="h-6 w-6" />
-          </div>
-          <h3 className="text-base font-bold text-white">Escrow & Loyalty Rewards</h3>
-          <p className="text-xs text-slate-400 leading-relaxed">
-            Stripe/Razorpay escrow protects both sellers and buyers, while eco-points reward consistent daily recycling streaks.
-          </p>
-        </div>
-      </div>
+      {/* Landing Footer */}
+      <footer className="pt-12 border-t border-border-subtle text-center text-xs text-text-muted space-y-2">
+        <p>
+          {appName} &bull; Version 1.0.0
+        </p>
+        <p className="text-[11px] text-text-muted/80">
+          Built for zero-waste industrial circular supply chains. Protected by RFC-7807 and JWT token rotation.
+        </p>
+      </footer>
     </div>
   );
 };

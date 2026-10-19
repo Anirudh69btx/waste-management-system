@@ -80,7 +80,8 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 # Precomputed dummy bcrypt hash for timing attack defense on user-not-found
 _DUMMY_PASSWORD = "dummy-timing-defense-password-string-vle-auth"
-_DUMMY_HASH = _pwd_context.hash(_DUMMY_PASSWORD)
+# Static bcrypt hash (work factor 12) for the dummy password to avoid runtime bcrypt backend issues
+_DUMMY_HASH = "$2b$12$C6UzMDM.H6dfI/f/IKc5euJ4R/6lJ8dQf6p2V2cK9cGdGjtVb5fUK"
 
 
 def dummy_verify_password() -> None:

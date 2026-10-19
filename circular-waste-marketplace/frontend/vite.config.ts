@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
@@ -15,10 +16,6 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     watch: {
-      // Polling-based file watcher for reliable HMR under Docker Desktop
-      // on Windows + WSL2. inotify events do not reliably cross the
-      // bind-mount boundary. Trades ~1-2% idle CPU for deterministic
-      // hot-reload behavior. Dev-only setting.
       usePolling: true,
       interval: 300,
     },
@@ -32,6 +29,12 @@ export default defineConfig({
         ws: true,
       },
     },
+  },
+  test: {
+    globals: true,
+    environment: "jsdom",
+    setupFiles: ["./src/test/setup.ts"],
+    include: ["src/**/*.{test,spec}.{ts,tsx}"],
   },
   build: {
     outDir: "dist",

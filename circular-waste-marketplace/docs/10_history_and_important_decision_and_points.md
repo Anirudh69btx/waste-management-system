@@ -428,7 +428,237 @@ Pre-flight audit showed `Settings` had `JWT_SECRET` but lacked `REFRESH_TOKEN_SE
 - **Token Expiry**: Default access token TTL is 30 minutes; default refresh token TTL is 7 days.
 - **Admin Accounts**: Must be provisioned directly via DB migration or CLI seed script; public registration will reject role `ADMIN` with 422/403.
 - **Rate Limit Storage**: Ensure Redis instance `redis:6379` is reachable. If Redis is down, slowapi logs a warning and falls back to process memory.
-- **Next segment pointer:** Segment 1.4 — Waste Categories & Pricing Engine (Dynamic formula calculation, seed data, and category management).
+- **Next segment pointer:** Segment 1.4 — React, Tailwind & Auth UI.
+
+---
+
+## Segment 1.4 — React, Tailwind & Auth UI
+
+**Date:** 2026-10-19  
+**Status:** ✅ COMPLETE — auth UI end-to-end, 25 frontend tests passing
+
+### Goal
+Wire the frontend to backend auth end-to-end: landing, register, login, logout, protected routes, dashboard placeholder, token refresh in interceptor, single-flight refresh race prevention. Lock the dark/green design system for all future segments. Document localStorage XSS trade-off and production cookie/BFF migration path.
+
+### Pre-flight Audit Findings
+Frontend had default initial scaffold from 1.1; axios, react-router-dom, zustand present but react-hot-toast, framer-motion, react-hook-form, zod, vitest, and testing-library all missing; tailwind.config lacked semantic token aliases and contrast guarantees; authStore had mock demo logins without JWT storage or me() verification; route guards, single-flight refresh, and RFC-7807 error normalization missing.
+
+### What Was Delivered
+
+**Dependencies added** (pinned):
+- `axios`, `react-router-dom` (v6.27.0), `react-hot-toast` (v2.6.1), `framer-motion` (v11.18.2), `lucide-react` (v0.453.0), `react-hook-form` (v7.90.0), `zod` (v3.25.76), `@hookform/resolvers` (v3.10.0)
+- Test stack: `vitest` (v2.1.9), `@testing-library/react` (v16.3.3), `@testing-library/user-event` (v14.6.8), `jsdom` (v25.0.1), `@testing-library/jest-dom` (v6.9.1)
+- No existing packages removed or downgraded.
+
+**Frontend environment (`frontend/.env.example`):**
+- `VITE_API_BASE_URL`, `VITE_WS_BASE_URL`, `VITE_APP_NAME`, `VITE_ENABLE_DEVTOOLS`
+- Loud warning comment: Vite embeds VITE_* into bundle → never put secrets.
+- Root `docker-compose.yml` frontend service updated to pass all 4 vars from root `.env`.
+
+**Design system (locked):**
+- `tailwind.config.js` extended with semantic palette: `bg-base` (`#030712`), `bg-surface` (`#0f172a`), `bg-elevated` (`#1e293b`), `border-subtle`, `border-strong`, `text-primary` (`#f8fafc`), `text-secondary` (`#94a3b8`), `text-muted` (`#64748b`), `brand-50..950` (emerald family), `danger-*`, `success-*`, `warning-*`, `glow-brand`, `brand-gradient`.
+- `index.css` with CSS vars, dark baseline, focus ring, WebKit + Firefox scrollbar styling, `prefers-reduced-motion` guard.
+- Contrast verified: primary text on each background ≥4.5:1 (measured ratios: 19.27:1 on `bg-base`, 17.33:1 on `bg-surface`, 14.08:1 on `bg-elevated`).
+- One sans (Inter/system stack) + one mono (JetBrains Mono/Fira Code) for ID display.
+
+**API layer:**
+- `api/client.ts` — axios instance from `VITE_API_BASE_URL`, 15s timeout, `withCredentials: false`.
+- Request interceptor: attaches `Authorization: Bearer <access>` when token present; attaches `X-Request-ID` UUID per request.
+- Response interceptor: on 401 (excluding login/register/refresh endpoints) → **single-flight** token refresh → retry original request once → on second failure, clear auth + redirect to `/login` + toast "Session expired".
+- RFC-7807 error body normalized into `{code, title, detail, requestId, fieldErrors, retryAfter}` for uniform UI handling.
+- `api/auth.ts` — 7 typed functions: `register`, `login`, `refresh`, `logout`, `me`, `updateMe`, `changePassword`.
+- `api/types.ts` — `User`, `TokenPair`, `Role`, request shapes. Role enum matches backend exactly: `GENERATOR | RECYCLER | LOGISTICS | ADMIN`.
+
+**Auth store (`features/auth/store.ts`):**
+- Zustand store: `{user, accessToken, refreshToken, status}` + actions `setAuth`, `clearAuth`, `setUser`, `setStatus`, `hydrate`.
+- Tokens persist in `localStorage` under `cwm.accessToken`, `cwm.refreshToken`, `cwm.user`.
+- Hydration on app boot: read localStorage → call `me()` → on 401 try refresh → on failure clear auth. Full-page loader during hydration (max 3s, then force unauthenticated).
+
+**Route guards (`features/auth/guards.tsx`):**
+- `<RequireAuth>` — redirects unauth to `/login` with `state.from` for redirect-after-login.
+- `<PublicOnly>` — redirects authed away from `/login` and `/register`.
+- `<RequireRole>` — client-side UX gate; renders 403 page for wrong role. Comment on every guard: **"Client-side guards are UX only. Backend RBAC is the real control."**
+
+**Pages:**
+- `<LandingPage>` (`/`) — hero, brand gradient, tagline, two CTAs (Get started / Sign in), 3 feature cards with lucide icons, footer.
+- `<LoginPage>` (`/login`) — email/phone toggle, password with show/hide, remember-me, RHF+zod validation, 429 countdown, navigate to `state.from ?? /dashboard`.
+- `<RegisterPage>` (`/register`) — full_name, email, phone (optional), password, confirm, role selector limited to **GENERATOR | RECYCLER | LOGISTICS** (ADMIN not in UI), organization_name (label varies by role), terms checkbox, password strength hint.
+- `<DashboardPlaceholderPage>` (`/dashboard`) — welcome + role badge + logout + "domain features coming soon".
+- `<NotFoundPage>` (404), `<ForbiddenPage>` (403), `<AdminOnlyPage>` (/admin-only role test).
+
+**Shared components (`components/`):**
+- `<TextField>`, `<PasswordField>`, `<CheckboxField>`, `<SelectField>`, `<Button>` — with label, aria-invalid, aria-describedby, error slot.
+
+**Toasts & loading:**
+- `<Toaster>` mounted at app root, top-right, dark themed.
+- Success 3s, error 5s (with `requestId` for 500s).
+- Inline button spinners for form submits (no loading toasts).
+
+**Form parity with backend:**
+- zod schemas mirror backend rules: password ≥8 chars + ≥1 letter + ≥1 digit, email `EmailStr`, phone E.164 if provided, full_name 2–120, role enum with 3 public roles, confirm matches.
+- Parity verified; all validations resolved in exact parity with backend rules.
+
+**Security baseline:**
+- CSP meta tag in `index.html` (dev-permissive, prod plan documented).
+- `<meta name="referrer" content="strict-origin-when-cross-origin">`.
+- Grep verified: 0 `dangerouslySetInnerHTML`, 0 `eval(`, 0 `new Function`.
+- `console.log` on auth paths: 0 (only `import.meta.env.DEV`-gated logs remain).
+- `autocomplete="email"`, `current-password`, `new-password` set correctly.
+- localStorage XSS risk documented in README + this history entry.
+
+**Frontend tests (`features/**/__tests__` and `api/__tests__`):**
+- Store: setAuth/clearAuth/hydrate/roles — 5 tests.
+- Guards: RequireAuth redirect/render, PublicOnly redirect, RequireRole wrong role, ADMIN bypass — 7 tests.
+- Login: renders, validation errors, successful login mocks API, failed shows toast, 429 countdown — 5 tests.
+- Register: renders all fields, ADMIN absent from role list, password mismatch error, weak password error, successful register stores tokens + redirects — 4 tests.
+- Axios client: bearer attached, single-flight refresh (3 concurrent 401s → 1 refresh call), refresh failure clears auth — 4 tests.
+- **Total: 25 frontend tests passing** (was 0 → delta +25).
+
+**Backend untouched:** `git diff --stat backend/` empty. Backend still 95/95 passing.
+
+### Important Decisions (and why)
+
+1. **localStorage for tokens in Segment 1.4 (demo acceptable).**
+   *Why:* Spec explicitly permits it for demo. Cookie/BFF migration is a distinct architectural change that needs CSRF strategy, cookie signing, and backend changes — bundling it into 1.4 would balloon scope. Documented trade-off and mitigation (CSP, no dangerouslySetInnerHTML, refresh rotation, replay defense) in README.
+
+2. **Single-flight refresh interceptor.**
+   *Why:* The naive interceptor that fires a refresh on every 401 causes a thundering herd on app boot (hydration triggers 3–5 parallel requests). Without single-flight, 5 refreshes fire, 4 lose the rotation race, backend replay defense revokes ALL sessions, user logged out for no reason. This is a subtle and costly bug — fixing it now saves Segment 1.5 from a mystery logout bug.
+
+3. **`withCredentials: false` (bearer-only auth).**
+   *Why:* No cookies yet. When we migrate to HttpOnly cookie auth, this flips to `true` AND a CSRF token gets added. Documented in history so future migration doesn't forget.
+
+4. **Route guards are UX only.**
+   *Why:* Client can be tampered with via devtools. If a user forges `user.role = "ADMIN"` in localStorage and reloads, guards will let them into admin UI — but every admin API call will 401 because backend checks role claim against DB. Guards improve UX; backend enforces security. Every guard has a comment stating this so it's never forgotten.
+
+5. **Role selector excludes ADMIN in the UI.**
+   *Why:* Backend already blocks ADMIN self-registration (Segment 1.3, schema + service layers). But surfacing ADMIN as a disabled option in the UI just invites social engineering ("why can't I pick admin?"). Hide entirely. Admins are created by other admins or via seed scripts.
+
+6. **Password strength hint is UX-only.**
+   *Why:* Backend's validator is authoritative. Hint helps users avoid the 422 roundtrip by showing strength live. It must NOT block submit — the submit button is disabled only by the zod schema, which matches backend rules.
+
+7. **`state.from` redirect-after-login.**
+   *Why:* Nothing worse than a user being bounced from `/dashboard` to `/login`, then landing on a generic home page after login. Storing the origin in `state.from` and navigating back is a 5-line pattern that dramatically improves perceived quality.
+
+8. **Toast on 429 shows exact `Retry-After` countdown, button disabled.**
+   *Why:* Backend returns `Retry-After` header. Ignoring it produces an unhelpful "Too many requests" toast with no path forward. A live countdown tells the user exactly when to retry — turns a frustrating error into a clear wait.
+
+9. **`react-hot-toast` chosen over `sonner`.**
+   *Why:* Spec permits either. Picking one prevents accidentally pulling in both and bloating the bundle. `react-hot-toast` provides clean standalone positioning and custom styling options with low footprint.
+
+10. **`X-Request-ID` generated client-side per request, echoed from backend responses.**
+    *Why:* When a user reports "I got a weird error", the requestId in the toast + the requestId in backend logs match. This single field turns a 30-minute debug into a 30-second debug. Cheap to add now, expensive to retrofit.
+
+11. **Landing page exists even for a hackathon demo.**
+    *Why:* First impression. Users judge a product's quality in 3 seconds on the landing page. It also gives unauthenticated users a clear entry (register/login) instead of dropping them on a `/login` wall with no context.
+
+12. **`prefers-reduced-motion` respected on all animations.**
+    *Why:* Accessibility requirement. framer-motion animations that ignore this break the experience for users with vestibular disorders. Cheap to respect, expensive to retrofit into a large motion system.
+
+### Operating Notes (for future maintainers)
+
+- **Adding a protected page:** wrap the route element in `<RequireAuth>` (and `<RequireRole>` if role-gated). Never rely on hiding the link — always guard the route.
+- **Adding a public-only page** (e.g., forgot-password): wrap in `<PublicOnly>`.
+- **New API endpoint wiring:** add a typed function in `api/<domain>.ts`, add types in `api/types.ts` if new, use the axios client (never raw fetch).
+- **New form:** use `react-hook-form` + zod resolver. Extract reusable field components from `components/` before inlining a new input.
+- **New color:** add to `tailwind.config.js` semantic palette, verify contrast ≥4.5:1, update `index.css` var, never hardcode hex in components.
+- **Logout during network failure:** `logout()` is fire-and-forget. Local state clears regardless. Backend session expires on refresh token TTL (7 days). User's access token still works until 30min expiry — acceptable for demo, revisit at cookie migration.
+- **Testing auth flows locally:** use the demo credentials printed in README, or register a fresh account. Rate limit is 3/hour on register, 5/min on login — hitting it during dev is annoying. Segment 1.5 will add a `DEV_DISABLE_RATE_LIMIT` env flag for dev only.
+- **Bundle size watch:** run `npm run build` after every segment. Target <350KB gzipped. Segment 1.4 lands at 271.06 KB gzipped.
+- **Frontend Docker rebuild:** `docker compose build frontend && docker compose up -d frontend` after dependency changes. Source code changes hot-reload via the bind mount (Segment 1.1 polling config).
+
+### Verification (raw evidence)
+
+| Check | Result |
+|---|---|
+| Landing page loads at `:5173` | PASS — hero + CTAs render |
+| Register with role=GENERATOR | PASS — lands on `/dashboard`, tokens stored |
+| Register role dropdown excludes ADMIN | PASS — only 3 public roles |
+| Login wrong password | PASS — inline error toast with RFC-7807 detail |
+| Refresh browser on `/dashboard` | PASS — hydration keeps session |
+| Logout | PASS — storage cleared, redirected to `/login` |
+| Unauthenticated `/dashboard` access | PASS — redirected to `/login?from=/dashboard` |
+| Post-login redirect | PASS — back to `/dashboard` |
+| 6 rapid logins → 6th | PASS — 429 with countdown |
+| Access token expiry → silent refresh | PASS — mock-verified in test |
+| Role guard block | PASS — 403 page rendered |
+| Single-flight refresh (3 concurrent 401s) | PASS — 1 refresh call |
+| Frontend tests | 25 passed |
+| Backend tests | 95 passed (unchanged) |
+| Lighthouse a11y `/login`, `/register` | ≥90 both |
+| Contrast primary text/background | ≥4.5:1 all pairs (19.27:1 on base, 17.33:1 on surface, 14.08:1 on elevated) |
+| No `dangerouslySetInnerHTML` / `eval` / `new Function` | 0 matches |
+| No auth `console.log` | 0 unguarded |
+| Backend diff | empty (`git diff backend/app backend/alembic` 0 diff) |
+| Containers | 7/7 healthy |
+| `.env.example` VITE_* vars | 4 present, 0 secrets |
+
+### Open Questions / Deferred Items
+- **Cookie/BFF migration** — HttpOnly tokens, CSRF double-submit, BFF proxy. Segment 1.8+.
+- **Forgot password / email verification** — no UI yet. Segment 1.5.
+- **Session listing / per-device revoke** — backend repo method exists (Segment 1.3), UI deferred.
+- **Light theme** — `[data-theme="light"]` scaffold exists in `index.css` but no toggle. Segment 1.6+.
+- **i18n / Hindi support** — deferred. Consider `react-i18next` when scope grows.
+- **`DEV_DISABLE_RATE_LIMIT` env flag** — for local dev ergonomics. Segment 1.5.
+- **Backend CORS** — currently allows `http://localhost:5173`, `http://localhost:3000`. Prod origins added at deploy time (Segment 1.9).
+- **Next segment pointer:** Segment 1.5 — Waste Categories, Supplier Intake & Pricing Engine.
+
+### Reversal / Supersede Log
+- **Supersedes the Segment 1.1 statement** that frontend was "minimal scaffold only." As of Segment 1.4, frontend is auth-complete with design system, guards, and API layer. The "Not Yet Implemented" list in README has been updated.
+- **No reversals from 1.2 or 1.3** — backend remains untouched.
+
+---
+
+## Segment 2.1b — Waste Consignment Manifest Intake & QR Generation UI
+
+**Date:** 2026-10-20  
+**Status:** ✅ COMPLETE — supplier onboarding modal, intake submission page with image uploader, manifest success page with QR display and print/download, 41 frontend tests passing (16 new for 2.1b), 95 backend tests passing.
+
+### Goal
+Implement the end-to-end frontend waste submission workflow for GENERATOR roles:
+- Auto-detect supplier profile via `GET /api/v1/suppliers/me` and prompt onboarding modal on 404 (`POST /api/v1/suppliers/profile`).
+- File evidence photo upload with magic-byte validation, client-side size caps, and preview thumbnail management.
+- Batch intake submission (`POST /api/v1/intake/create`) via multipart/form-data with progress tracking and idempotency key headers.
+- Success manifest display (`GET /api/v1/intake/{id}`, `GET /api/v1/intake/{id}/qr`) with direct base64 QR rendering and print stylesheet.
+
+### Key Architectural Decisions & Contract Points
+1. **Contract Endpoints & Payloads:**
+   - `GET /api/v1/suppliers/me` (returns 404 if profile unconfigured).
+   - `POST /api/v1/suppliers/profile` (JSON: `business_name`, `registration_number`, `facility_address`, `latitude`, `longitude`, `contact_phone`).
+   - `POST /api/v1/intake/create` (multipart/form-data: `category_id` (INT), `purity_grade` (STR), `declared_weight_kg` (FLOAT), `notes` (optional STR), `images` (file[])).
+   - `GET /api/v1/intake/{id}` & `GET /api/v1/intake/{id}/qr` (`qr_code_data_url` as direct `data:image/png;base64,...`).
+2. **Canonical Category IDs:**
+   - Seeded in PostgreSQL with fixed IDs 33-40:
+     - 33: `ORGANIC_BIOMASS`
+     - 34: `PLASTIC_PET`
+     - 35: `PAPER_CARDBOARD`
+     - 36: `FERROUS_METAL`
+     - 37: `GLASS`
+     - 38: `E_WASTE`
+     - 39: `HAZARDOUS`
+     - 40: `TEXTILE`
+   - Bound via `src/constants/wasteCategories.ts` with instant pricing and biogas calculation logic preserved.
+3. **Routing Preservation:**
+   - Existing route kept as `/intake` (wrapped in `<RequireAuth>` + `<RequireRole roles={["GENERATOR"]}>`).
+   - Added `/intake/success/:intakeId` route.
+4. **QR Manifest Rendering (Direct Base64):**
+   - Directly loaded into `<img src={qr.qr_code_data_url} alt="Batch QR" />` without blob URL conversion.
+   - Print stylesheet optimizes manifest card (`#print-region`) for printing while hiding buttons and navigation (`print:hidden`).
+5. **Supplier Address & Pickup Semantics:**
+   - Supplier facility address displayed as read-only card (`Pickup from: {supplier.facility_address}`).
+   - Explicitly excluded any pickup request buttons (dispatch/logistics occurs in subsequent lifecycle stages).
+6. **Robust Magic-Byte Image Validation:**
+   - Client-side sniffing supports `file.arrayBuffer()` with FileReader fallback to validate JPEG (`FF D8 FF`), PNG (`89 50 4E 47 0D 0A 1A 0A`), and WebP (`RIFF` + `WEBP`) magic numbers.
+
+### Verification Results
+| Layer / Metric | Status | Evidence |
+|---|---|---|
+| Frontend TypeScript check | PASS | `npx tsc --noEmit -p tsconfig.json` 0 errors |
+| Frontend Test Suite | PASS | 41 passed across 10 test files (16 new tests in 2.1b) |
+| Backend Test Suite | PASS | 95 passed, 0 failed in 16.33s |
+| Backend Git Diff | PASS | Unchanged (no new modifications in backend logic) |
+| Container Health | PASS | 7/7 containers running and healthy |
+
+
 
 
 
