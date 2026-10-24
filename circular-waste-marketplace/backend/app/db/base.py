@@ -33,12 +33,14 @@ class TimestampMixin:
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
+        default=lambda: datetime.now(timezone.utc),
         nullable=False,
         doc="UTC timestamp when this record was created.",
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
+        default=lambda: datetime.now(timezone.utc),
         onupdate=func.now(),
         nullable=False,
         doc="UTC timestamp of the last modification.",

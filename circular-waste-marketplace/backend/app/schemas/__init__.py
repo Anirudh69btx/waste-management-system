@@ -127,6 +127,14 @@ class QRCodeResponse(_Base):
     verification_url: str
 
 
+class IntakeListResponse(_Base):
+    """Paginated list of waste intake consignments."""
+    items: list[WasteIntakeResponse]
+    total: int
+    limit: int
+    offset: int
+
+
 # ---------------------------------------------------------------------------
 # AI Assessment
 # ---------------------------------------------------------------------------
@@ -491,3 +499,20 @@ class ProblemDetail(_Base):
     instance: Optional[str] = None
     request_id: Optional[str] = None
     errors: Optional[list[dict[str, Any]]] = None
+
+
+# Segment 2.2a schemas
+from app.schemas.pickup_schemas import (
+    DriverSummary,
+    IntakeSummary,
+    PickupRequestAssign,
+    PickupRequestCreate,
+    PickupRequestListResponse,
+    PickupRequestRead,
+    PickupRequestStatusUpdate,
+)
+from app.schemas.weight_ticket_schemas import (
+    WeightTicketAcknowledge,
+    WeightTicketCreate,
+    WeightTicketRead,
+)

@@ -78,6 +78,8 @@ class SupplierService:
             )
             self._db.add(supplier)
 
+        await self._db.flush()
+        await self._db.commit()
         return SupplierResponse.model_validate(supplier)
 
     async def get_by_user_id(self, user_id: str) -> SupplierResponse:

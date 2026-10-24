@@ -233,3 +233,75 @@ export interface TelemetryPoint {
   battery_pct?: number;
   recorded_at: string;
 }
+// ─── Segment 2.2 types ───
+
+export interface PickupRequestRead {
+  id: string;
+  intake_id: string;
+  requested_by_user_id: string;
+  assigned_driver_user_id: string | null;
+  scheduled_start: string;
+  scheduled_end: string;
+  actual_pickup_at: string | null;
+  status: "requested" | "accepted" | "en_route" | "arrived" | "picked_up" | "completed" | "cancelled" | "failed";
+  cancellation_reason: string | null;
+  failure_reason: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  intake_summary?: { id: string; batch_code: string; category_name: string };
+  driver_summary?: { id: string; full_name: string } | null;
+}
+
+export interface WeightTicketRead {
+  id: string;
+  intake_id: string;
+  pickup_request_id: string | null;
+  weight_method: "manual" | "demo" | "digital_scale" | "weighbridge";
+  gross_weight_kg: number;
+  tare_weight_kg: number;
+  net_weight_kg: number;
+  scale_id: string | null;
+  scale_calibration_date: string | null;
+  photo_urls: string[];
+  recorded_by_user_id: string;
+  recorded_at: string;
+  discrepancy_flag: boolean;
+  discrepancy_notes: string | null;
+  notes: string | null;
+  supplier_confirmed_at: string | null;
+  supplier_dispute_notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WasteIntakeListItem {
+  id: string;
+  batch_code: string;
+  supplier_id: string;
+  category: WasteCategory;
+  purity_grade: string;
+  declared_weight_kg: number;
+  verified_weight_kg: number | null;
+  weight_discrepancy_kg: number | null;
+  status: string;
+  qr_code_hash: string;
+  image_paths: string[];
+  notes: string | null;
+  verified_at: string | null;
+  created_at: string;
+}
+
+export interface IntakeListResponse {
+  items: WasteIntakeListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface PickupListResponse {
+  items: PickupRequestRead[];
+  total: number;
+  limit: number;
+  offset: number;
+}

@@ -55,12 +55,21 @@ class WastePurityGrade(str, enum.Enum):
 
 class IntakeStatus(str, enum.Enum):
     """FSM states for a waste intake consignment."""
-    SUBMITTED = "SUBMITTED"
-    IN_TRANSIT = "IN_TRANSIT"
-    WEIGHED = "WEIGHED"
-    VERIFIED = "VERIFIED"
-    FLAGGED_DISCREPANCY = "FLAGGED_DISCREPANCY"
-    REJECTED = "REJECTED"
+    SUBMITTED = "submitted"
+    PICKUP_REQUESTED = "pickup_requested"
+    PICKUP_ASSIGNED = "pickup_assigned"
+    PICKED_UP = "picked_up"
+    WEIGHED = "weighed"
+    IN_SORTING = "in_sorting"
+    SORTED = "sorted"
+    LISTED = "listed"
+    SOLD = "sold"
+    CANCELLED = "cancelled"
+    REJECTED = "rejected"
+
+    # Compatibility aliases
+    VERIFIED = "weighed"
+    FLAGGED_DISCREPANCY = "weighed"
 
 
 class TransitStatus(str, enum.Enum):
@@ -322,8 +331,8 @@ class WasteIntake(Base, TimestampMixin):
     declared_weight_kg: Mapped[float] = mapped_column(Double, nullable=False)
     verified_weight_kg: Mapped[Optional[float]] = mapped_column(Double, nullable=True)
     weight_discrepancy_kg: Mapped[Optional[float]] = mapped_column(Double, nullable=True)
-    status: Mapped[IntakeStatus] = mapped_column(
-        Enum(IntakeStatus, native_enum=False), default=IntakeStatus.SUBMITTED, nullable=False
+    status: Mapped[str] = mapped_column(
+        String(32), default=IntakeStatus.SUBMITTED.value, nullable=False
     )
     qr_code_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     image_paths: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
@@ -343,8 +352,19 @@ class WasteIntake(Base, TimestampMixin):
     sorting_records: Mapped[list["SortingRecord"]] = relationship(
         "SortingRecord", back_populates="intake"
     )
+    pickup_request: Mapped[Optional["PickupRequest"]] = relationship(
+        "PickupRequest", back_populates="intake", uselist=False
+    )
+    weight_tickets: Mapped[list["WeightTicket"]] = relationship(
+        "WeightTicket", back_populates="intake"
+    )
 
     __table_args__ = (
+        CheckConstraint(
+            "status IN ('submitted', 'pickup_requested', 'pickup_assigned', 'picked_up', 'weighed', "
+            "'in_sorting', 'sorted', 'listed', 'sold', 'cancelled', 'rejected')",
+            name="ck_waste_intakes_status",
+        ),
         Index("idx_waste_intakes_batch", "batch_code"),
         Index("idx_waste_intakes_supplier", "supplier_id"),
         Index("idx_waste_intakes_status", "status"),
@@ -816,3 +836,8 @@ class EcoOrder(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     __table_args__ = (Index("idx_eco_orders_user", "user_id", "created_at"),)
+
+
+# Segment 2.2a models
+from app.models.pickup import PickupRequest, PickupStatus
+from app.models.weight_ticket import WeightTicket, WeightMethod

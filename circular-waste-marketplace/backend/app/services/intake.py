@@ -28,15 +28,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.logging import get_logger
-from app.core.security import sign_manifest
+from app.core.security import sign_manifest, TokenPayload
 from app.core.settings import get_settings
 from app.models import (
     IntakeStatus,
     Supplier,
+    UserRole,
     WasteCategory,
     WasteIntake,
 )
+from app.repositories import IntakeRepository
 from app.schemas import (
+    IntakeListResponse,
     QRCodeResponse,
     VerifyWeightRequest,
     VerifyWeightResponse,
@@ -377,3 +380,63 @@ class IntakeService:
             scale_operator_id=uuid.UUID(operator_id),
             verified_at=intake.verified_at,
         )
+
+    # ── List Intakes (Role-Aware) ──────────────────────────────────────────
+
+    async def list_intakes(
+        self,
+        user: TokenPayload,
+        status_filter: Optional[str] = None,
+        category_id: Optional[int] = None,
+        offset: int = 0,
+        limit: int = 20,
+    ) -> IntakeListResponse:
+        """
+        Role-aware paginated list of waste intakes:
+        - GENERATOR: only own intakes
+        - RECYCLER: intakes in status weighed, in_sorting, sorted, listed, sold
+        - LOGISTICS: intakes assigned to driver via pickup request
+        - ADMIN: all intakes across platform
+        """
+        repo = IntakeRepository(self._db)
+        if user.role == UserRole.GENERATOR.value:
+            items, total = await repo.list_for_supplier(
+                supplier_user_id=uuid.UUID(user.sub),
+                status=status_filter,
+                category_id=category_id,
+                offset=offset,
+                limit=limit,
+            )
+        elif user.role == UserRole.RECYCLER.value:
+            items, total = await repo.list_for_recycler(
+                status=status_filter,
+                category_id=category_id,
+                offset=offset,
+                limit=limit,
+            )
+        elif user.role == UserRole.LOGISTICS.value:
+            items, total = await repo.list_for_logistics(
+                driver_user_id=uuid.UUID(user.sub),
+                status=status_filter,
+                category_id=category_id,
+                offset=offset,
+                limit=limit,
+            )
+        elif user.role == UserRole.ADMIN.value:
+            items, total = await repo.list_all(
+                status=status_filter,
+                category_id=category_id,
+                offset=offset,
+                limit=limit,
+            )
+        else:
+            return IntakeListResponse(items=[], total=0, limit=limit, offset=offset)
+
+        response_items = [WasteIntakeResponse.model_validate(item) for item in items]
+        return IntakeListResponse(
+            items=response_items,
+            total=total,
+            limit=limit,
+            offset=offset,
+        )
+

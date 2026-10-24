@@ -1,15 +1,15 @@
 """Remaining routers — thin wrappers delegating to services."""
 from __future__ import annotations
 # Suppliers, Intake, Tracking, Sorting, Marketplace, Pricing, Payments,
-# Rewards, Eco-Store, Analytics, AI Assessment routers.
+# Rewards, Eco-Store, Analytics, AI Assessment, Pickup, Weight Ticket routers.
 # Each router: zero business logic, only DI wiring + schema validation.
 
 from fastapi import APIRouter
 
-# Placeholder imports — each service module is fully implemented below.
-# These are re-exported as the router objects main.py expects.
 from app.routers.suppliers import router as _s
 from app.routers.intake import router as _i
+from app.routers.pickup import router as _p
+from app.routers.weight_ticket import router as _wt
 from app.routers.tracking import router as _t
 from app.routers.sorting import router as _so
 from app.routers.marketplace import router as _m

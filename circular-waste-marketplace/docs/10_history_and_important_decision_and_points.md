@@ -662,3 +662,86 @@ Implement the end-to-end frontend waste submission workflow for GENERATOR roles:
 
 
 
+
+---
+
+## Segment 2.2a - Pickup Requests, Weight Tickets, and Batch List (Backend)
+
+**Date:** 2026-10-20
+**Owner:** AI Pair-Programmer (Antigravity)
+**Status:** COMPLETE
+
+### Goal (as originally stated)
+Deliver 8 endpoints + 2 models (PickupRequest, WeightTicket) + 20 tests, unblocking the Segment 2.2 frontend dashboard. No frontend changes. No new pip packages.
+
+### What Was Delivered
+
+**New Models**
+- PickupRequest (app/models/pickup.py) - 8-state FSM with FK to waste_intakes and optional driver FK to users.
+- WeightTicket (app/models/weight_ticket.py) - Physical scale measurement. Server computes net_weight_kg = gross - tare. Stores discrepancy flag (>15% delta from declared weight), photo paths, supplier confirmation and dispute notes.
+
+**New Repositories**
+- PickupRepository - CRUD + FSM transitions, per-role filtered list queries.
+- WeightTicketRepository - Create, get-by-id, get-by-intake (latest ticket).
+
+**New Services**
+- PickupService - Create (ownership + status guards), assign driver (ADMIN only), update status (role-aware FSM transitions), list (role-filtered), get-by-id (404-masked).
+- WeightService - Record weight (GENERATOR forbidden; Decimal net compute), acknowledge (dispute_notes >=10 chars if confirmed=false), get ticket.
+
+**Extended IntakeService**: added list_intakes - role-filtered paginated list with ?status= and ?category_id= filters.
+
+**New Endpoints (8+1 total)**
+
+| Method | Path | Roles | Description |
+|--------|------|-------|-------------|
+| GET | /api/v1/intake | ALL | Paginated, role-filtered intake list |
+| POST | /api/v1/intake/{id}/weight-ticket | LOGISTICS, RECYCLER, ADMIN | Record scale weight |
+| GET | /api/v1/intake/{id}/weight-ticket | ALL | Get latest weight ticket |
+| POST | /api/v1/intake/{id}/weight-ticket/acknowledge | GENERATOR, ADMIN | Confirm or dispute weight |
+| POST | /api/v1/pickups | GENERATOR, ADMIN | Schedule a pickup |
+| GET | /api/v1/pickups | GENERATOR, LOGISTICS, ADMIN | List pickups (role-filtered) |
+| GET | /api/v1/pickups/{id} | GENERATOR, LOGISTICS, ADMIN | Get pickup detail |
+| PATCH | /api/v1/pickups/{id}/status | GENERATOR, LOGISTICS, ADMIN | FSM status transition |
+| PATCH | /api/v1/pickups/{id}/assign | ADMIN | Assign logistics driver |
+
+**Migrations:** 0003_pickup_requests.py, 0004_weight_tickets.py, 0005_intake_status_extend.py
+
+**Tests (49 new)**
+- test_segment_2_2a_pickups.py - 26 tests (5 classes) covering all pickup endpoints.
+- test_segment_2_2a_weight_tickets.py - 23 tests (4 classes) covering weight ticket and intake list endpoints.
+
+### Important Decisions (and why)
+
+1. **from __future__ import annotations removed from all router modules.**
+   Why: FastAPI + slowapi @limiter.limit() + Pydantic v2 type introspection fails with NameError: name uuid is not defined when future annotations are enabled. The string-evaluation path breaks UUID forward-ref resolution in rate limiter decorators.
+
+2. **extra=forbid on WeightTicketCreate schema.**
+   Why: Prevents client from submitting a falsified net_weight_kg. The 422 is enforced at schema layer before the service even runs - fraud-prevention by design.
+
+3. **Server-side net_weight_kg via Decimal, not float.**
+   Why: Float arithmetic rounding errors are unacceptable on legal weight tickets. Decimal(str(value)) eliminates 100.1 - 10.05 != 90.05 class of bugs. Stored as NUMERIC in Postgres.
+
+4. **Discrepancy flag threshold = 15%.**
+   Why: Industry standard for mass-balance reconciliation in waste logistics is +-10-20%. 15% flags genuine measurement problems without over-triggering on legitimate transport variance.
+
+5. **404-masking for ownership violations (privacy by default).**
+   Why: Returning 403 confirms the resource exists. A GENERATOR asking for another suppliers resource gets 404. ADMIN sees everything.
+
+6. **Cancellation/failure require reason - enforced in service, not schema.**
+   Why: The FSM reason field is optional in Pydantic (otherwise it 422s for non-cancel/fail transitions), but the service validates it contextually only for terminal states.
+
+7. **TimestampMixin client-side defaults (default=lambda: datetime.now(timezone.utc)).**
+   Why: Pydantic validates freshly-created SQLAlchemy objects before DB flush, when created_at is None. Client-side defaults ensure the field is set at construction time.
+
+### Verification Results
+
+| Layer / Metric | Status | Evidence |
+|---|---|---|
+| New tests (2.2a) | PASS | 49 new tests, 49 passed |
+| Full backend suite | PASS | 144 passed, 0 failed in 16.23s |
+| Zero regressions | PASS | Pre-existing 95 tests all still pass |
+| Alembic state | PASS | alembic check clean |
+| Container Health | PASS | 7/7 containers running and healthy |
+| New models | PASS | PickupRequest, WeightTicket, PickupStatus, WeightMethod exported from app.models |
+| Routers mounted | PASS | /api/v1/pickups, /api/v1/weight-tickets, and intake sub-routes all registered in main.py |
+
