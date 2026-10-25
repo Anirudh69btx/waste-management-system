@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from celery import Celery
+from celery.schedules import crontab
 from celery.utils.log import get_task_logger
 
 from app.core.settings import get_settings
@@ -47,11 +48,21 @@ celery_app.conf.update(
         "app.workers.tasks.credit_intake_rewards": {"queue": "rewards"},
         "app.workers.tasks.expire_checkout_holds": {"queue": "maintenance"},
         "app.workers.tasks.send_notification": {"queue": "notifications"},
+        "app.workers.tasks.gps_simulation_tick": {"queue": "maintenance"},
+        "app.workers.tasks.gps_ping_cleanup": {"queue": "maintenance"},
     },
     beat_schedule={
         "expire-holds-every-5min": {
             "task": "app.workers.tasks.expire_checkout_holds",
             "schedule": 300.0,  # every 5 minutes
+        },
+        "gps-simulation-tick": {
+            "task": "app.workers.tasks.gps_simulation_tick",
+            "schedule": 10.0,
+        },
+        "gps-ping-cleanup-daily": {
+            "task": "app.workers.tasks.gps_ping_cleanup",
+            "schedule": crontab(hour=3, minute=0),
         },
     },
 )
@@ -354,3 +365,47 @@ def send_notification(
 
     logger.warning("notification_provider_not_configured", channel=channel)
     return {"status": "skipped"}
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Task 5: GPS Simulation Tick
+# ═══════════════════════════════════════════════════════════════════════════
+
+@celery_app.task(name="app.workers.tasks.gps_simulation_tick")
+def gps_simulation_tick():
+    import asyncio
+    from app.db.session import async_session_maker
+    from app.services.simulation_service import tick_simulation
+
+    async def _run():
+        async with async_session_maker() as session:
+            n = await tick_simulation(session, request_id="celery-sim")
+            return n
+
+    return asyncio.run(_run())
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Task 6: GPS Ping Cleanup
+# ═══════════════════════════════════════════════════════════════════════════
+
+@celery_app.task(name="app.workers.tasks.gps_ping_cleanup")
+def gps_ping_cleanup():
+    import asyncio
+    from datetime import datetime, timezone, timedelta
+    from app.db.session import async_session_maker
+    from app.repositories.gps_repository import GpsRepository
+    from app.core.settings import get_settings
+
+    settings = get_settings()
+    retention_hours = int(getattr(settings, "GPS_PING_RETENTION_HOURS", 72))
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=retention_hours)
+
+    async def _run():
+        async with async_session_maker() as session:
+            count = await GpsRepository.delete_older_than(session, cutoff)
+            await session.commit()
+            return count
+
+    return asyncio.run(_run())
+

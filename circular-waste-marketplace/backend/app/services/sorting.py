@@ -1,6 +1,4 @@
-"""
-Service module: SortingService
-"""
-from app.services._services_impl import SortingService
+"""Sorting service re-export."""
+from app.services.sorting_service import SortingService
 
 __all__ = ["SortingService"]

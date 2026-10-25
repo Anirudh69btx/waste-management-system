@@ -49,6 +49,8 @@ from app.routers import (
     analytics,
     ai_assessment,
     health,
+    fleet,
+    traceability,
 )
 
 settings = get_settings()
@@ -327,6 +329,8 @@ def create_application() -> FastAPI:
     app.include_router(eco_store.router, prefix=prefix)     # /api/v1/eco-store/...
     app.include_router(analytics.router, prefix=prefix)     # /api/v1/dashboards/..., /api/v1/metrics/...
     app.include_router(ai_assessment.router, prefix=prefix) # /api/v1/ai/...
+    app.include_router(fleet.router, prefix=prefix)         # /api/v1/fleet/...
+    app.include_router(traceability.router, prefix=prefix)  # /api/v1/traceability/...
 
     return app
 

@@ -36,6 +36,23 @@ class IntakeRepository:
         result = await self._db.execute(query)
         return result.scalar_one_or_none()
 
+    async def get_by_ids(self, intake_ids: list[uuid.UUID]) -> list[WasteIntake]:
+        """Fetch multiple intakes by IDs with relationships."""
+        if not intake_ids:
+            return []
+        query = (
+            select(WasteIntake)
+            .where(WasteIntake.id.in_(intake_ids))
+            .options(
+                selectinload(WasteIntake.category),
+                selectinload(WasteIntake.supplier),
+                selectinload(WasteIntake.pickup_request),
+                selectinload(WasteIntake.weight_tickets),
+            )
+        )
+        result = await self._db.execute(query)
+        return list(result.scalars().all())
+
     async def list_for_supplier(
         self,
         supplier_user_id: uuid.UUID,

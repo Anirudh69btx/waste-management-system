@@ -146,11 +146,20 @@ class Settings(BaseSettings):
     sentry_traces_sample_rate: float = 0.1
     prometheus_enabled: bool = True
 
-    # ── Maps ──────────────────────────────────────────────────────────────────
+    # ── Maps & Fleet Tracking ──────────────────────────────────────────────────
     maps_provider: Literal["osm", "mapbox", "google", "mock"] = "osm"
     mapbox_token: str = ""
     google_maps_api_key: str = ""
     telemetry_retention_days: int = 30
+    map_tiles_provider: str = "osm"
+    map_tiles_url_osm: str = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+    gps_simulation_enabled: str = "true"
+    gps_simulation_interval_seconds: int = 10
+    gps_ping_retention_hours: int = 24
+    vehicle_default_capacity_kg: int = 500
+    route_search_max_stops: int = 10
+    route_nearest_neighbor_start_lat: float = 19.0760
+    route_nearest_neighbor_start_lng: float = 72.8777
 
     # ── Aliases & Derived properties ──────────────────────────────────────────
     @property
@@ -177,6 +186,14 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         """True when running in production environment."""
         return self.app_env == "production"
+
+    @property
+    def GPS_SIMULATION_ENABLED(self) -> str:
+        return self.gps_simulation_enabled
+
+    @GPS_SIMULATION_ENABLED.setter
+    def GPS_SIMULATION_ENABLED(self, value: str) -> None:
+        self.gps_simulation_enabled = value
 
     @property
     def is_mock_payments_allowed(self) -> bool:

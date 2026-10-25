@@ -297,7 +297,7 @@ class WasteCategory(Base):
         "WasteIntake", back_populates="category"
     )
     inventory_lots: Mapped[list["InventoryLot"]] = relationship(
-        "InventoryLot", back_populates="category"
+        "InventoryLot"
     )
     pricing_rules: Mapped[list["PricingRule"]] = relationship(
         "PricingRule", back_populates="category"
@@ -349,8 +349,9 @@ class WasteIntake(Base, TimestampMixin):
         "WasteAssessment", back_populates="intake", uselist=False
     )
     transits: Mapped[list["WasteTransit"]] = relationship("WasteTransit", back_populates="intake")
+    metadata_json: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict, server_default='{}')
     sorting_records: Mapped[list["SortingRecord"]] = relationship(
-        "SortingRecord", back_populates="intake"
+        "SortingRecord"
     )
     pickup_request: Mapped[Optional["PickupRequest"]] = relationship(
         "PickupRequest", back_populates="intake", uselist=False
@@ -474,85 +475,6 @@ class VehicleTelemetry(Base):
 # Sorting & Inventory
 # ---------------------------------------------------------------------------
 
-class SortingRecord(Base):
-    """Audit log of a physical sorting/decontamination run."""
-    __tablename__ = "sorting_records"
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-    intake_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("waste_intakes.id", ondelete="RESTRICT"), nullable=False
-    )
-    facility_location: Mapped[str] = mapped_column(String(255), nullable=False)
-    input_weight_kg: Mapped[float] = mapped_column(Double, nullable=False)
-    sorted_yield_kg: Mapped[float] = mapped_column(Double, nullable=False)
-    contamination_removed_kg: Mapped[float] = mapped_column(Double, nullable=False)
-    sorting_efficiency_percent: Mapped[float] = mapped_column(Double, nullable=False)
-    sorter_operator_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
-    )
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-
-    intake: Mapped["WasteIntake"] = relationship("WasteIntake", back_populates="sorting_records")
-    inventory_lots: Mapped[list["InventoryLot"]] = relationship(
-        "InventoryLot", back_populates="sorting_record"
-    )
-
-    __table_args__ = (
-        Index("idx_sorting_intake", "intake_id"),
-        Index("idx_sorting_completed", "completed_at"),
-    )
-
-
-class InventoryLot(Base, TimestampMixin):
-    """Standardized certified inventory lot ready for B2B marketplace trading."""
-    __tablename__ = "inventory_lots"
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-    lot_code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
-    sorting_record_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("sorting_records.id", ondelete="RESTRICT"), nullable=False
-    )
-    category_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("waste_categories.id", ondelete="RESTRICT"), nullable=False
-    )
-    purity_grade: Mapped[WastePurityGrade] = mapped_column(
-        Enum(WastePurityGrade, native_enum=False), nullable=False
-    )
-    moisture_content_percent: Mapped[float] = mapped_column(Double, default=0.0, nullable=False)
-    initial_quantity_kg: Mapped[float] = mapped_column(Double, nullable=False)
-    available_quantity_kg: Mapped[float] = mapped_column(Double, nullable=False)
-    reserved_quantity_kg: Mapped[float] = mapped_column(Double, default=0.0, nullable=False)
-    warehouse_location: Mapped[str] = mapped_column(String(100), nullable=False)
-    status: Mapped[InventoryLotStatus] = mapped_column(
-        Enum(InventoryLotStatus, native_enum=False),
-        default=InventoryLotStatus.AVAILABLE, nullable=False
-    )
-
-    sorting_record: Mapped["SortingRecord"] = relationship(
-        "SortingRecord", back_populates="inventory_lots"
-    )
-    category: Mapped["WasteCategory"] = relationship("WasteCategory", back_populates="inventory_lots")
-    marketplace_listings: Mapped[list["MarketplaceListing"]] = relationship(
-        "MarketplaceListing", back_populates="inventory_lot"
-    )
-
-    __table_args__ = (
-        Index("idx_inventory_lot_code", "lot_code"),
-        Index("idx_inventory_category_grade", "category_id", "purity_grade", "status"),
-        CheckConstraint(
-            "initial_quantity_kg > 0 AND available_quantity_kg >= 0 AND reserved_quantity_kg >= 0",
-            name="chk_inventory_qty_positive"
-        ),
-    )
-
-
-# ---------------------------------------------------------------------------
 # Pricing Rules
 # ---------------------------------------------------------------------------
 
@@ -613,21 +535,37 @@ class MarketplaceListing(Base, TimestampMixin):
     unit_price_per_kg: Mapped[float] = mapped_column(Double, nullable=False)
     calculated_floor_price: Mapped[float] = mapped_column(Double, nullable=False)
     estimated_co2_offset_total: Mapped[float] = mapped_column(Double, nullable=False)
-    status: Mapped[ListingStatus] = mapped_column(
-        Enum(ListingStatus, native_enum=False), default=ListingStatus.ACTIVE, nullable=False
+    status: Mapped[str] = mapped_column(
+        String(32), default="active", nullable=False
     )
     auction_ends_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     inventory_lot: Mapped["InventoryLot"] = relationship(
-        "InventoryLot", back_populates="marketplace_listings"
+        "InventoryLot"
     )
     category: Mapped["WasteCategory"] = relationship(
         "WasteCategory", back_populates="marketplace_listings"
     )
-    bids: Mapped[list["Bid"]] = relationship("Bid", back_populates="listing")
+    bids: Mapped[list["Bid"]] = relationship("Bid")
     purchase_orders: Mapped[list["PurchaseOrder"]] = relationship(
-        "PurchaseOrder", back_populates="listing"
+        "PurchaseOrder"
     )
+
+    @property
+    def available_kg(self) -> float:
+        return self.available_quantity_kg
+
+    @property
+    def quantity_kg(self) -> float:
+        return self.available_quantity_kg
+
+    @property
+    def price_per_kg(self) -> float:
+        return self.unit_price_per_kg
+
+    @property
+    def min_bid_kg(self) -> float:
+        return self.min_order_quantity_kg
 
     __table_args__ = (
         Index("idx_listings_catalog_search", "category_id", "status", "unit_price_per_kg"),
@@ -647,92 +585,6 @@ class MarketplaceListing(Base, TimestampMixin):
 # Bids
 # ---------------------------------------------------------------------------
 
-class Bid(Base, TimestampMixin):
-    """B2B procurement bid placed by a certified buyer."""
-    __tablename__ = "bids"
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-    listing_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("marketplace_listings.id", ondelete="RESTRICT"), nullable=False
-    )
-    buyer_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
-    )
-    bid_price_per_kg: Mapped[float] = mapped_column(Double, nullable=False)
-    requested_quantity_kg: Mapped[float] = mapped_column(Double, nullable=False)
-    total_bid_amount: Mapped[float] = mapped_column(Double, nullable=False)
-    status: Mapped[BidStatus] = mapped_column(
-        Enum(BidStatus, native_enum=False), default=BidStatus.PENDING, nullable=False
-    )
-    valid_until: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-
-    listing: Mapped["MarketplaceListing"] = relationship("MarketplaceListing", back_populates="bids")
-
-    __table_args__ = (
-        Index("idx_bids_listing_rank", "listing_id", "bid_price_per_kg", "created_at"),
-        Index("idx_bids_buyer", "buyer_id", "status"),
-        CheckConstraint(
-            "bid_price_per_kg > 0 AND requested_quantity_kg > 0 AND total_bid_amount > 0",
-            name="chk_bid_values"
-        ),
-    )
-
-
-# ---------------------------------------------------------------------------
-# Purchase Orders
-# ---------------------------------------------------------------------------
-
-class PurchaseOrder(Base, TimestampMixin):
-    """Binding commercial contract between buyer and seller with escrow."""
-    __tablename__ = "purchase_orders"
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-    order_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
-    listing_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("marketplace_listings.id", ondelete="RESTRICT"), nullable=False
-    )
-    buyer_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
-    )
-    seller_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
-    )
-    accepted_bid_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("bids.id", ondelete="SET NULL"), nullable=True
-    )
-    quantity_kg: Mapped[float] = mapped_column(Double, nullable=False)
-    unit_price_per_kg: Mapped[float] = mapped_column(Double, nullable=False)
-    subtotal_amount: Mapped[float] = mapped_column(Double, nullable=False)
-    platform_fee_amount: Mapped[float] = mapped_column(Double, nullable=False)
-    total_gross_amount: Mapped[float] = mapped_column(Double, nullable=False)
-    payment_status: Mapped[PaymentStatus] = mapped_column(
-        Enum(PaymentStatus, native_enum=False), default=PaymentStatus.PENDING, nullable=False
-    )
-    fulfillment_status: Mapped[FulfillmentStatus] = mapped_column(
-        Enum(FulfillmentStatus, native_enum=False), default=FulfillmentStatus.PENDING, nullable=False
-    )
-    payment_gateway_ref: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-
-    listing: Mapped["MarketplaceListing"] = relationship(
-        "MarketplaceListing", back_populates="purchase_orders"
-    )
-
-    __table_args__ = (
-        Index("idx_po_number", "order_number"),
-        Index("idx_po_buyer", "buyer_id", "fulfillment_status"),
-        Index("idx_po_seller", "seller_id", "fulfillment_status"),
-        CheckConstraint(
-            "quantity_kg > 0 AND unit_price_per_kg > 0 AND total_gross_amount > 0",
-            name="chk_po_amounts"
-        ),
-    )
-
-
-# ---------------------------------------------------------------------------
 # Reward Wallets & Transactions
 # ---------------------------------------------------------------------------
 
@@ -841,3 +693,20 @@ class EcoOrder(Base):
 # Segment 2.2a models
 from app.models.pickup import PickupRequest, PickupStatus
 from app.models.weight_ticket import WeightTicket, WeightMethod
+
+# Segment 3.1 models
+from app.models.vehicle import Vehicle
+from app.models.trip import Trip, TripStop
+from app.models.gps_ping import GpsPing
+
+# Segment 3.2 models
+from app.models.sorting_record import SortingRecord
+from app.models.inventory_lot import InventoryLot
+from app.models.purchase_order import PurchaseOrder
+from app.models.traceability_event import TraceabilityEvent
+from app.models.bid import Bid
+
+__all__ = [
+    "Vehicle", "Trip", "TripStop", "GpsPing",
+    "SortingRecord", "InventoryLot", "PurchaseOrder", "TraceabilityEvent",
+]

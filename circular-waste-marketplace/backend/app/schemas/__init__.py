@@ -516,3 +516,28 @@ from app.schemas.weight_ticket_schemas import (
     WeightTicketCreate,
     WeightTicketRead,
 )
+
+# Segment 3.2 schemas
+from app.schemas.sorting_schemas import (
+    SortingRecordCreate,
+    InventoryLotCreate,
+    SortingRecordRead,
+    InventoryLotRead,
+)
+from app.schemas.marketplace_schemas import (
+    ListingCreate,
+    ListingRead,
+    ListingListResponse,
+    BidCreate,
+    BidRead,
+    BidAcceptRequest,
+    BuyNowRequest,
+    PurchaseOrderRead,
+    OrderListResponse,
+    OrderCancelRequest,
+    ConfirmOrderRequest,
+)
+from app.schemas.traceability_schemas import (
+    TraceabilityEventRead,
+    TraceabilityTimelineResponse,
+)

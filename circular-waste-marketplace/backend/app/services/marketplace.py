@@ -1,6 +1,4 @@
-"""
-Service module: MarketplaceService
-"""
-from app.services._services_impl import MarketplaceService
+"""Marketplace service re-export."""
+from app.services.marketplace_service import MarketplaceService
 
 __all__ = ["MarketplaceService"]

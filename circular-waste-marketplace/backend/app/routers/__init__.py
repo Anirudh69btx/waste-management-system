@@ -1,10 +1,5 @@
-"""Remaining routers — thin wrappers delegating to services."""
+"""Routers package."""
 from __future__ import annotations
-# Suppliers, Intake, Tracking, Sorting, Marketplace, Pricing, Payments,
-# Rewards, Eco-Store, Analytics, AI Assessment, Pickup, Weight Ticket routers.
-# Each router: zero business logic, only DI wiring + schema validation.
-
-from fastapi import APIRouter
 
 from app.routers.suppliers import router as _s
 from app.routers.intake import router as _i
@@ -20,3 +15,16 @@ from app.routers.eco_store import router as _e
 from app.routers.analytics import router as _a
 from app.routers.ai_assessment import router as _ai
 from app.routers.health import router as _h
+from app.routers.fleet import router as fleet_router
+from app.routers import fleet
+from app.routers import sorting
+from app.routers import marketplace
+from app.routers import traceability
+
+__all__ = [
+    "fleet_router",
+    "fleet",
+    "sorting",
+    "marketplace",
+    "traceability",
+]
