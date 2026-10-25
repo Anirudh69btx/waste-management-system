@@ -15,6 +15,7 @@ import asyncio
 import hashlib
 import io
 import os
+import secrets
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,10 +25,11 @@ import qrcode
 from fastapi import HTTPException, UploadFile, status
 from qrcode.image.pil import PilImage
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.logging import get_logger
+from app.core.logging import get_logger, get_request_id
 from app.core.security import sign_manifest, TokenPayload
 from app.core.settings import get_settings
 from app.models import (
@@ -55,9 +57,9 @@ _ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 
 def _generate_batch_code() -> str:
-    """Generate a deterministic batch code: BATCH-YYYYMMDD-XXXX."""
+    """Generate a deterministic batch code: BATCH-YYYYMMDD-XXXXXXXX (8 hex chars)."""
     date_str = datetime.now(tz=timezone.utc).strftime("%Y%m%d")
-    suffix = uuid.uuid4().hex[:4].upper()
+    suffix = secrets.token_hex(4).upper()
     return f"BATCH-{date_str}-{suffix}"
 
 
@@ -226,27 +228,48 @@ class IntakeService:
             path = await _save_image(intake_id, raw, c_hash, idx)
             image_paths.append(path)
 
-        # Generate batch code and QR
-        batch_code = _generate_batch_code()
-        qr_hash = _compute_qr_hash(batch_code, str(supplier.id), declared_weight_kg)
-        manifest_data = f"{batch_code}|{supplier.id}|{declared_weight_kg:.4f}"
-        manifest_signature = sign_manifest(manifest_data)
+        # Generate batch code and persist with retry loop on unique constraint collision
+        supplier_id_val = supplier.id
+        last_error = None
+        for attempt in range(3):
+            try:
+                batch_code = _generate_batch_code()
+                qr_hash = _compute_qr_hash(batch_code, str(supplier_id_val), declared_weight_kg)
+                manifest_data = f"{batch_code}|{supplier_id_val}|{declared_weight_kg:.4f}"
+                manifest_signature = sign_manifest(manifest_data)
 
-        # Persist
-        intake = WasteIntake(
-            id=intake_id,
-            batch_code=batch_code,
-            supplier_id=supplier.id,
-            category_id=category_id,
-            purity_grade=purity_grade,
-            declared_weight_kg=declared_weight_kg,
-            status=IntakeStatus.SUBMITTED,
-            qr_code_hash=qr_hash,
-            image_paths=image_paths,
-            notes=notes,
-        )
-        self._db.add(intake)
-        await self._db.flush()
+                # Persist
+                intake = WasteIntake(
+                    id=intake_id,
+                    batch_code=batch_code,
+                    supplier_id=supplier_id_val,
+                    category_id=category_id,
+                    purity_grade=purity_grade,
+                    declared_weight_kg=declared_weight_kg,
+                    status=IntakeStatus.SUBMITTED,
+                    qr_code_hash=qr_hash,
+                    image_paths=image_paths,
+                    notes=notes,
+                )
+                self._db.add(intake)
+                await self._db.flush()
+                break
+            except IntegrityError as e:
+                await self._db.rollback()
+                if "waste_intakes_batch_code_key" in str(e):
+                    last_error = e
+                    logger.warning(
+                        "intake.batch_code_collision",
+                        attempt=attempt,
+                        request_id=get_request_id(),
+                    )
+                    continue
+                raise
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to generate unique batch code after 3 attempts. Please retry.",
+            )
 
         logger.info("intake_created", batch_code=batch_code, category_id=category_id)
 
