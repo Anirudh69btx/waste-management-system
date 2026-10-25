@@ -49,12 +49,13 @@ def test_rbac_disallowed_role_access(client: TestClient, override_real_db) -> No
     assert response.status_code == 403
 
 
-def test_rbac_admin_satisfies_all_role_gates(client: TestClient, admin_headers: dict[str, str]) -> None:
+def test_rbac_admin_satisfies_all_role_gates(client: TestClient, real_user_headers) -> None:
     """ADMIN role implicitly satisfies any role gate."""
+    headers = real_user_headers("ADMIN")
     # /api/v1/sorting/process allows RECYCLER or ADMIN
     res = client.post(
         "/api/v1/sorting/process",
-        headers=admin_headers,
+        headers=headers,
         json={
             "intake_id": "00000000-0000-0000-0000-000000000000",
             "facility_location": "Plant 1",

@@ -31,11 +31,12 @@ def test_unauthorized_access_fails(client: TestClient) -> None:
     assert response.status_code == 401
 
 
-def test_forbidden_role_access(client: TestClient, supplier_headers: dict[str, str]) -> None:
+def test_forbidden_role_access(client: TestClient, real_user_headers) -> None:
     """Supplier (GENERATOR) should not be authorized to perform recycler sorting operations."""
+    headers = real_user_headers("GENERATOR")
     response = client.post(
         "/api/v1/sorting/process",
-        headers=supplier_headers,
+        headers=headers,
         json={
             "intake_id": "00000000-0000-0000-0000-000000000000",
             "sorted_weight_kg": 100.0,
