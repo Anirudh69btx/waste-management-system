@@ -2,28 +2,28 @@
 
 **Project:** Circular Waste & Resource Marketplace  
 **Document Code:** ENG-JOURNAL-001  
-**Sprint Model:** Solo Developer → Hackathon Delivery  
+**Sprint Model:** Solo Developer â†’ Hackathon Delivery  
 **Lead Solutions Architect & Developer:** Solo Full-Stack Engineer  
 **Repository State:** Sprint Active  
 
 ---
 
-# 10 — History & Important Decisions & Points
+# 10 â€” History & Important Decisions & Points
 
 This document is the single source of truth for **why** the project looks the way it does. Every meaningful architectural decision, every "we almost did X but chose Y" moment, and every critical operating note lives here. Future contributors and AI agents read this file before touching the codebase.
 
-Chronological. Newest at the bottom within each segment. Do not delete old entries — if a decision is reversed, add a new entry explaining the reversal and link back.
+Chronological. Newest at the bottom within each segment. Do not delete old entries â€” if a decision is reversed, add a new entry explaining the reversal and link back.
 
 ---
 
-## Segment 1.1 — Docker & Project Setup
+## Segment 1.1 â€” Docker & Project Setup
 
 **Date:** _(fill date of completion, format YYYY-MM-DD)_
 **Owner:** _(your name or agent handle)_
-**Status:** ✅ Completed
+**Status:** âœ… Completed
 
 ### Goal (as originally stated)
-One command brings Postgres, FastAPI, and React dev server up, healthy and reachable. This is the foundation — nothing else can be trusted if this isn't rock solid.
+One command brings Postgres, FastAPI, and React dev server up, healthy and reachable. This is the foundation â€” nothing else can be trusted if this isn't rock solid.
 
 ### What Was Delivered
 - Root folder `circular-waste-marketplace/` created with the canonical subfolders `backend/`, `frontend/`, `database/`, `docs/`.
@@ -51,7 +51,7 @@ One command brings Postgres, FastAPI, and React dev server up, healthy and reach
    *Why:* Bind-mounting Postgres data directories across Windows/WSL2 host boundaries is a well-known source of permission and corruption bugs. Named volumes sidestep this entirely and are the Docker-native pattern.
 
 4. **Vite polling-based file watching enabled for dev.**
-   *Why:* Docker Desktop on Windows does not reliably forward inotify filesystem events from bind-mounted host folders. Without polling, hot module reload silently stops working and developers think Vite is broken. Polling trades a bit of CPU for predictable behavior. This is a **dev-only** setting — must be reconsidered for production builds.
+   *Why:* Docker Desktop on Windows does not reliably forward inotify filesystem events from bind-mounted host folders. Without polling, hot module reload silently stops working and developers think Vite is broken. Polling trades a bit of CPU for predictable behavior. This is a **dev-only** setting â€” must be reconsidered for production builds.
 
 5. **`.env.example` committed, `.env` ignored.**
    *Why:* New contributors need to know exactly which variables exist and what they do. Committing `.env` invites secret leakage; committing `.env.example` gives guidance without risk.
@@ -74,7 +74,7 @@ One command brings Postgres, FastAPI, and React dev server up, healthy and reach
 - **Rebuilding after `requirements.txt` change:** `docker compose build backend` (or `--build` on `up`). Bind-mounted source doesn't need a rebuild; dependency changes do.
 - **Reading logs per service:** `docker compose logs -f backend` / `postgres` / `frontend`.
 - **Shelling in:** `docker compose exec backend bash`, `docker compose exec postgres psql -U $POSTGRES_USER -d $POSTGRES_DB`, `docker compose exec frontend sh`.
-- **Port conflicts:** If 8000, 5173, or 5432 collide with local services on a developer machine, edit the host-side port mapping in `docker-compose.yml` only — the container-internal port must stay constant so service-to-service DNS works.
+- **Port conflicts:** If 8000, 5173, or 5432 collide with local services on a developer machine, edit the host-side port mapping in `docker-compose.yml` only â€” the container-internal port must stay constant so service-to-service DNS works.
 
 ### Checkpoint Result (what was verified)
 
@@ -90,27 +90,27 @@ One command brings Postgres, FastAPI, and React dev server up, healthy and reach
 | Idempotent second `up --build` | PASS |
 
 ### Open Questions / Deferred Items
-- _Add any_ — e.g., whether to adopt the `docker-compose.override.yml` pattern in later segments, whether to add a `Makefile`, whether to include a Postgres admin UI (e.g., pgAdmin) as a dev-only sidecar.
-- **Next segment pointer:** _Segment 1.2 — (whatever comes next, fill this in when it begins)._
+- _Add any_ â€” e.g., whether to adopt the `docker-compose.override.yml` pattern in later segments, whether to add a `Makefile`, whether to include a Postgres admin UI (e.g., pgAdmin) as a dev-only sidecar.
+- **Next segment pointer:** _Segment 1.2 â€” (whatever comes next, fill this in when it begins)._
 
 ### Reversal / Supersede Log
 - None yet.
 
 ---
 
-## Segment 1.1 — Docker Build Repair + Full Requirements Install
+## Segment 1.1 â€” Docker Build Repair + Full Requirements Install
 
 **Date:** 2026-10-18
-**Status:** ✅ Resolved
+**Status:** âœ… Resolved
 
 ### What Was Broken
 Docker build failed with "target stage 'development' could not be found". `docker-compose.yml` declared `target: development` but neither Dockerfile had a `FROM ... AS development` stage. 0/7 containers running.
 
 ### What Was Fixed
-- Rewrote `backend/Dockerfile` → 3 stages: `base` (installs ALL production requirements + `pip freeze > /tmp/installed-prod.txt`), `development` (dev reqs on top + `pip freeze`), `production` (slim, non-root, gunicorn).
-- Rewrote `frontend/Dockerfile` → 4 stages: `base`, `development`, `builder`, `production` (nginx).
-- Rewrote `docker-compose.yml` → 7 services (postgres, redis, minio, backend, celery-worker, celery-beat, frontend) with health checks, named volumes, `depends_on: condition: service_healthy`.
-- Merged existing `requirements.txt` + baseline → **no package dropped**. Fixed `anyio==4.6.2` (yanked) → `4.7.0`.
+- Rewrote `backend/Dockerfile` â†’ 3 stages: `base` (installs ALL production requirements + `pip freeze > /tmp/installed-prod.txt`), `development` (dev reqs on top + `pip freeze`), `production` (slim, non-root, gunicorn).
+- Rewrote `frontend/Dockerfile` â†’ 4 stages: `base`, `development`, `builder`, `production` (nginx).
+- Rewrote `docker-compose.yml` â†’ 7 services (postgres, redis, minio, backend, celery-worker, celery-beat, frontend) with health checks, named volumes, `depends_on: condition: service_healthy`.
+- Merged existing `requirements.txt` + baseline â†’ **no package dropped**. Fixed `anyio==4.6.2` (yanked) â†’ `4.7.0`.
 - Added `backend/entrypoint.sh` with `pg_isready` wait + conditional alembic migration + optional MinIO bucket creation. LF endings enforced; stripped UTF-8 BOM.
 - Added `vite.config.ts` polling file watching (Windows + WSL2 HMR fix), `frontend/nginx.conf` for prod.
 - Celery app path confirmed: `app.workers.tasks:celery_app` (compose commands updated to match).
@@ -142,24 +142,24 @@ Docker build failed with "target stage 'development' could not be found". `docke
 | Backend tests | 37/37 |
 
 ### Lessons
-- Always verify pip installs **inside the built image** — version resolution can differ from host.
+- Always verify pip installs **inside the built image** â€” version resolution can differ from host.
 - Use `pip freeze` in every Docker stage for auditability.
 - Keep `docker-compose.yml` `target:` in lockstep with Dockerfile `AS` names.
 - Windows + WSL2 bind-mount HMR requires polling (`CHOKIDAR_USEPOLLING=true` + Vite `usePolling`).
 - Gate migrations via `RUN_MIGRATIONS=true` so only `backend` runs them.
-- `anyio==4.6.2` is yanked on PyPI — always check for yanked pins during dry-run.
+- `anyio==4.6.2` is yanked on PyPI â€” always check for yanked pins during dry-run.
 - Shell scripts executed in Linux containers must not contain UTF-8 BOM (`\xef\xbb\xbf`) or Windows CRLF endings.
 - Pydantic v2 `pydantic-settings` parses list-typed environment variables via `json.loads` by default.
 
 ---
 
-## Segment 1.2 — FastAPI + PostgreSQL Foundation
+## Segment 1.2 â€” FastAPI + PostgreSQL Foundation
 
 **Date:** 2026-10-18
-**Status:** ✅ COMPLETE — settings, DB layer, Alembic, health, CORS, logging all production-grade
+**Status:** âœ… COMPLETE â€” settings, DB layer, Alembic, health, CORS, logging all production-grade
 
 ### Goal
-Wire FastAPI to PostgreSQL with a clean, reusable DB layer; make `/health` prove DB connectivity; lock schema lifecycle to Alembic; enforce CORS from settings; introduce structured logging and request IDs. No business logic, no new models, no auth endpoints — pure infrastructure hardening on top of the Segment 1.1 working stack.
+Wire FastAPI to PostgreSQL with a clean, reusable DB layer; make `/health` prove DB connectivity; lock schema lifecycle to Alembic; enforce CORS from settings; introduce structured logging and request IDs. No business logic, no new models, no auth endpoints â€” pure infrastructure hardening on top of the Segment 1.1 working stack.
 
 ### Pre-flight Audit Findings
 `app/core/settings.py` existed with initial fields but lacked explicit aliases/properties (`jwt_secret`, `cors_origins`, `upload_dir`, `max_upload_mb`), fail-fast production security checks, and wildcard CORS guards; `app/db/` had `session.py` inlining engine creation without a dedicated `engine.py` or `__init__.py` re-exports; Alembic `env.py` and initial migration existed and were healthy; `/health` was a static 200 without DB ping or latency; `/ready` checked DB/Redis but not migration table state; CORS had no wildcard protection; request-ID middleware was not bound to structlog contextvars; `.env.example` was missing 54 settings keys.
@@ -175,9 +175,9 @@ Wire FastAPI to PostgreSQL with a clean, reusable DB layer; make `/health` prove
 - Enforced rejection of wildcard `*` in CORS origins when credentials are enabled.
 
 **DB layer (`app/db/`)**
-- `engine.py` — `create_async_engine` from `DATABASE_URL`, `pool_size=10`, `max_overflow=20`, `pool_pre_ping=True`, `pool_recycle=1800`, echo gated by `APP_DEBUG`.
-- `session.py` — `async_session_maker`, `get_db` async-generator dependency (open → yield → rollback on error → close), plus `get_db_context` (`async_session_context`) context-manager variant for background tasks / Celery.
-- `base.py` — SQLAlchemy 2.x `DeclarativeBase` with `TimestampMixin`. All existing models inherit from it.
+- `engine.py` â€” `create_async_engine` from `DATABASE_URL`, `pool_size=10`, `max_overflow=20`, `pool_pre_ping=True`, `pool_recycle=1800`, echo gated by `APP_DEBUG`.
+- `session.py` â€” `async_session_maker`, `get_db` async-generator dependency (open â†’ yield â†’ rollback on error â†’ close), plus `get_db_context` (`async_session_context`) context-manager variant for background tasks / Celery.
+- `base.py` â€” SQLAlchemy 2.x `DeclarativeBase` with `TimestampMixin`. All existing models inherit from it.
 - `__init__.py` re-exports `Base`, `TimestampMixin`, `get_db`, `get_async_session`, `async_session_maker`, `AsyncSessionLocal`, `async_engine`, `engine`, `get_db_context`, `async_session_context`.
 
 **Alembic**
@@ -185,38 +185,38 @@ Wire FastAPI to PostgreSQL with a clean, reusable DB layer; make `/health` prove
 - `compare_type=True` and `compare_server_default=True` enabled.
 - Current head: `0001_initial_schema`.
 - `alembic check` reports no drift ("No new upgrade operations detected.").
-- `Base.metadata.create_all` removed from runtime path — schema is Alembic-only.
+- `Base.metadata.create_all` removed from runtime path â€” schema is Alembic-only.
 
 **App (`main.py`)**
 - `lifespan` context manager: startup logs app name/version/env, runs `SELECT 1` on DB (warning in dev, raises in prod on failure); shutdown disposes engine pool (`await async_engine.dispose()`).
 - CORS from `settings.cors_origins`; `allow_credentials=True`; not combined with `"*"` origin.
 - All 12 domain routers registered under `settings.api_v1_prefix` (37 endpoints intact).
-- Global exception handlers: `RequestValidationError → 422`, `HTTPException → standard shape`, catch-all `Exception → 500` with `request_id`, no stack leak in prod.
+- Global exception handlers: `RequestValidationError â†’ 422`, `HTTPException â†’ standard shape`, catch-all `Exception â†’ 500` with `request_id`, no stack leak in prod.
 - Request-ID middleware: UUID per request, `X-Request-ID` response header, bound to structlog contextvars.
 - Docs URLs disabled when `APP_ENV=production`.
 
 **Health & Ready**
-- `GET /health` — structured JSON: `status`, `version`, `environment`, `database` (`ok`/`unreachable` + latency ms), `timestamp`. 200 when DB ok, 503 when unreachable.
-- `GET /ready` — 200 only when DB reachable AND migrations at head (verified via `alembic_version` present).
-- `GET /` — app metadata JSON (`name`, `version`, `environment`, `docs`, `health`).
+- `GET /health` â€” structured JSON: `status`, `version`, `environment`, `database` (`ok`/`unreachable` + latency ms), `timestamp`. 200 when DB ok, 503 when unreachable.
+- `GET /ready` â€” 200 only when DB reachable AND migrations at head (verified via `alembic_version` present).
+- `GET /` â€” app metadata JSON (`name`, `version`, `environment`, `docs`, `health`).
 
 **Logging (`app/core/logging.py`)**
 - `structlog` configured once: JSON in prod, colored human-readable in dev.
 - Every log line carries `timestamp`, `level`, `event`, `request_id`, `logger`.
-- PII redaction: `password`, `token`, `authorization`, `cookie`, `secret`, `access_token`, `refresh_token` → `***`.
+- PII redaction: `password`, `token`, `authorization`, `cookie`, `secret`, `access_token`, `refresh_token` â†’ `***`.
 - `print()` eliminated from `app/` (0 occurrences).
 
 **Environment variables**
 - `.env.example` updated to include all 75 settings variables + aliases. Scripted comparison returns 0 diff (`set()`).
 
 **Tests**
-- `tests/conftest.py` — `db_session` (transactional rollback), `async_client` (httpx ASGITransport), `auth_headers` stub.
+- `tests/conftest.py` â€” `db_session` (transactional rollback), `async_client` (httpx ASGITransport), `auth_headers` stub.
 - New tests: `/health` ok + degraded, `/ready` ok + 503, `/` shape, CORS allowed/blocked, `X-Request-ID` present, settings fail-fast, session closes/rollbacks on error.
-- Test count: **50 passed** (was 37 → delta +13).
+- Test count: **50 passed** (was 37 â†’ delta +13).
 
 ### Important Decisions (and why)
 
-1. **Alembic-only schema lifecycle — `create_all` removed.**
+1. **Alembic-only schema lifecycle â€” `create_all` removed.**
    *Why:* `create_all` silently diverges from migrations. Once it runs, autogenerate can no longer be trusted. Cutting it now (Segment 1.2) prevents a painful migration audit later.
 
 2. **Two DB URLs: `DATABASE_URL` (async) and `DATABASE_URL_SYNC` (sync).**
@@ -237,22 +237,22 @@ Wire FastAPI to PostgreSQL with a clean, reusable DB layer; make `/health` prove
 7. **Global catch-all exception handler with a generic 500 body.**
    *Why:* FastAPI's default leaks stack traces in debug mode. A custom handler ensures no stack trace or internal path escapes in production, while still logging the full trace server-side (tied to `request_id`).
 
-8. **CORS `allow_credentials=True` forbids `allow_origins=["*"]` — enforced in settings validator.**
+8. **CORS `allow_credentials=True` forbids `allow_origins=["*"]` â€” enforced in settings validator.**
    *Why:* Browsers reject `*` + credentials. Allowing it silently in dev means production breaks. Rejecting at startup makes the misconfiguration impossible to ship.
 
 9. **Settings fail-fast in production when `JWT_SECRET` is the placeholder.**
    *Why:* The single most common security incident in FastAPI projects is a dev secret reaching prod. Killing the process at boot is the cheapest fix.
 
-10. **New tests target infrastructure only — no business logic tests.**
+10. **New tests target infrastructure only â€” no business logic tests.**
     *Why:* Business logic hasn't been built yet. Tests here prove that every future segment inherits a working DB, session, health, CORS, and logging foundation. Testing what doesn't exist yet dilutes the signal.
 
 ### Operating Notes (for future maintainers)
 
-- **Adding a model:** create it in `app/models/`, ensure it inherits from `app.db.base.Base`, then run `alembic revision --autogenerate -m "add_<model>"`. Review the generated diff **line by line** — autogenerate is a suggestion, not truth. Rename hex revision IDs to human-readable names before commit.
+- **Adding a model:** create it in `app/models/`, ensure it inherits from `app.db.base.Base`, then run `alembic revision --autogenerate -m "add_<model>"`. Review the generated diff **line by line** â€” autogenerate is a suggestion, not truth. Rename hex revision IDs to human-readable names before commit.
 - **Applying migrations in dev:** the `backend` container's entrypoint runs `alembic upgrade head` on startup when `RUN_MIGRATIONS=true`. Celery containers set it to `false` so they never race.
 - **Applying migrations in prod:** run `alembic upgrade head` as a **separate one-shot job** (Kubernetes `Job`, ECS task, `docker compose run --rm backend alembic upgrade head`), not via the app process. Never let a rolling deploy with multiple replicas all run migrations.
-- **Resetting the DB:** `docker compose down -v && docker compose up --build`. This wipes the volume — use deliberately.
-- **Checking drift before commit:** `docker compose exec backend alembic check` must print "No new upgrade operations detected." If it prints drift, a model was changed without a migration — fix before merging.
+- **Resetting the DB:** `docker compose down -v && docker compose up --build`. This wipes the volume â€” use deliberately.
+- **Checking drift before commit:** `docker compose exec backend alembic check` must print "No new upgrade operations detected." If it prints drift, a model was changed without a migration â€” fix before merging.
 - **Health monitoring:** poll `/health` at 10s, `/ready` at 30s. Alert on `/ready` returning non-200 for >2 minutes.
 
 ### Verification (raw evidence)
@@ -279,8 +279,8 @@ Wire FastAPI to PostgreSQL with a clean, reusable DB layer; make `/health` prove
 ### Open Questions / Deferred Items
 - **Auth endpoints NOT implemented in this segment.** JWT and password-hashing packages are installed and `JWT_SECRET` / `ACCESS_TOKEN_EXPIRE_MINUTES` are wired in settings, but `/auth/login`, `/auth/register`, `/auth/refresh` belong to Segment 1.3. Do not add them here.
 - **Rate limiting** deferred to Segment 1.3 (auth) and Segment 1.4 (public endpoints). Infra packages (`slowapi`) not added yet.
-- **Prometheus `/metrics`** — package is installed but endpoint not exposed. Add in Segment 1.4 alongside load-testing.
-- **Next segment pointer:** Segment 1.3 — Auth (JWT + refresh + RBAC + tests).
+- **Prometheus `/metrics`** â€” package is installed but endpoint not exposed. Add in Segment 1.4 alongside load-testing.
+- **Next segment pointer:** Segment 1.3 â€” Auth (JWT + refresh + RBAC + tests).
 
 ### Reversal / Supersede Log
 - **Reversed from Segment 1.1:** `Base.metadata.create_all()` removed from startup. Reason: violates Alembic-only schema discipline. Any references in old code were replaced with the lifespan assertion that `alembic_version` exists.
@@ -288,10 +288,10 @@ Wire FastAPI to PostgreSQL with a clean, reusable DB layer; make `/health` prove
 
 ---
 
-## Segment 1.3 — Authentication & Authorization
+## Segment 1.3 â€” Authentication & Authorization
 
 **Date:** 2026-10-18
-**Status:** ✅ COMPLETE — JWT + refresh rotation + RBAC + rate limiting, 95 tests passing
+**Status:** âœ… COMPLETE â€” JWT + refresh rotation + RBAC + rate limiting, 95 tests passing
 
 ### Goal
 Full production authentication & authorization spine: user registration, dual login (email or phone, accepting JSON and OAuth2 form-encoded data), database-backed refresh tokens with rotation and replay attack defense, idempotent logout (204), profile retrieval (`/me`), profile updates (`PATCH /me`), and password changes with user-wide token invalidation. RBAC dependency injectors gated by the `UserRole` enum (`GENERATOR`, `RECYCLER`, `LOGISTICS`, `ADMIN`), where `ADMIN` implicitly passes all gates, and database role claim divergence triggers 401. Auth endpoint rate limiting using `slowapi` backed by Redis DB 3 with memory fallback.
@@ -428,14 +428,14 @@ Pre-flight audit showed `Settings` had `JWT_SECRET` but lacked `REFRESH_TOKEN_SE
 - **Token Expiry**: Default access token TTL is 30 minutes; default refresh token TTL is 7 days.
 - **Admin Accounts**: Must be provisioned directly via DB migration or CLI seed script; public registration will reject role `ADMIN` with 422/403.
 - **Rate Limit Storage**: Ensure Redis instance `redis:6379` is reachable. If Redis is down, slowapi logs a warning and falls back to process memory.
-- **Next segment pointer:** Segment 1.4 — React, Tailwind & Auth UI.
+- **Next segment pointer:** Segment 1.4 â€” React, Tailwind & Auth UI.
 
 ---
 
-## Segment 1.4 — React, Tailwind & Auth UI
+## Segment 1.4 â€” React, Tailwind & Auth UI
 
 **Date:** 2026-10-19  
-**Status:** ✅ COMPLETE — auth UI end-to-end, 25 frontend tests passing
+**Status:** âœ… COMPLETE â€” auth UI end-to-end, 25 frontend tests passing
 
 ### Goal
 Wire the frontend to backend auth end-to-end: landing, register, login, logout, protected routes, dashboard placeholder, token refresh in interceptor, single-flight refresh race prevention. Lock the dark/green design system for all future segments. Document localStorage XSS trade-off and production cookie/BFF migration path.
@@ -452,42 +452,42 @@ Frontend had default initial scaffold from 1.1; axios, react-router-dom, zustand
 
 **Frontend environment (`frontend/.env.example`):**
 - `VITE_API_BASE_URL`, `VITE_WS_BASE_URL`, `VITE_APP_NAME`, `VITE_ENABLE_DEVTOOLS`
-- Loud warning comment: Vite embeds VITE_* into bundle → never put secrets.
+- Loud warning comment: Vite embeds VITE_* into bundle â†’ never put secrets.
 - Root `docker-compose.yml` frontend service updated to pass all 4 vars from root `.env`.
 
 **Design system (locked):**
 - `tailwind.config.js` extended with semantic palette: `bg-base` (`#030712`), `bg-surface` (`#0f172a`), `bg-elevated` (`#1e293b`), `border-subtle`, `border-strong`, `text-primary` (`#f8fafc`), `text-secondary` (`#94a3b8`), `text-muted` (`#64748b`), `brand-50..950` (emerald family), `danger-*`, `success-*`, `warning-*`, `glow-brand`, `brand-gradient`.
 - `index.css` with CSS vars, dark baseline, focus ring, WebKit + Firefox scrollbar styling, `prefers-reduced-motion` guard.
-- Contrast verified: primary text on each background ≥4.5:1 (measured ratios: 19.27:1 on `bg-base`, 17.33:1 on `bg-surface`, 14.08:1 on `bg-elevated`).
+- Contrast verified: primary text on each background â‰¥4.5:1 (measured ratios: 19.27:1 on `bg-base`, 17.33:1 on `bg-surface`, 14.08:1 on `bg-elevated`).
 - One sans (Inter/system stack) + one mono (JetBrains Mono/Fira Code) for ID display.
 
 **API layer:**
-- `api/client.ts` — axios instance from `VITE_API_BASE_URL`, 15s timeout, `withCredentials: false`.
+- `api/client.ts` â€” axios instance from `VITE_API_BASE_URL`, 15s timeout, `withCredentials: false`.
 - Request interceptor: attaches `Authorization: Bearer <access>` when token present; attaches `X-Request-ID` UUID per request.
-- Response interceptor: on 401 (excluding login/register/refresh endpoints) → **single-flight** token refresh → retry original request once → on second failure, clear auth + redirect to `/login` + toast "Session expired".
+- Response interceptor: on 401 (excluding login/register/refresh endpoints) â†’ **single-flight** token refresh â†’ retry original request once â†’ on second failure, clear auth + redirect to `/login` + toast "Session expired".
 - RFC-7807 error body normalized into `{code, title, detail, requestId, fieldErrors, retryAfter}` for uniform UI handling.
-- `api/auth.ts` — 7 typed functions: `register`, `login`, `refresh`, `logout`, `me`, `updateMe`, `changePassword`.
-- `api/types.ts` — `User`, `TokenPair`, `Role`, request shapes. Role enum matches backend exactly: `GENERATOR | RECYCLER | LOGISTICS | ADMIN`.
+- `api/auth.ts` â€” 7 typed functions: `register`, `login`, `refresh`, `logout`, `me`, `updateMe`, `changePassword`.
+- `api/types.ts` â€” `User`, `TokenPair`, `Role`, request shapes. Role enum matches backend exactly: `GENERATOR | RECYCLER | LOGISTICS | ADMIN`.
 
 **Auth store (`features/auth/store.ts`):**
 - Zustand store: `{user, accessToken, refreshToken, status}` + actions `setAuth`, `clearAuth`, `setUser`, `setStatus`, `hydrate`.
 - Tokens persist in `localStorage` under `cwm.accessToken`, `cwm.refreshToken`, `cwm.user`.
-- Hydration on app boot: read localStorage → call `me()` → on 401 try refresh → on failure clear auth. Full-page loader during hydration (max 3s, then force unauthenticated).
+- Hydration on app boot: read localStorage â†’ call `me()` â†’ on 401 try refresh â†’ on failure clear auth. Full-page loader during hydration (max 3s, then force unauthenticated).
 
 **Route guards (`features/auth/guards.tsx`):**
-- `<RequireAuth>` — redirects unauth to `/login` with `state.from` for redirect-after-login.
-- `<PublicOnly>` — redirects authed away from `/login` and `/register`.
-- `<RequireRole>` — client-side UX gate; renders 403 page for wrong role. Comment on every guard: **"Client-side guards are UX only. Backend RBAC is the real control."**
+- `<RequireAuth>` â€” redirects unauth to `/login` with `state.from` for redirect-after-login.
+- `<PublicOnly>` â€” redirects authed away from `/login` and `/register`.
+- `<RequireRole>` â€” client-side UX gate; renders 403 page for wrong role. Comment on every guard: **"Client-side guards are UX only. Backend RBAC is the real control."**
 
 **Pages:**
-- `<LandingPage>` (`/`) — hero, brand gradient, tagline, two CTAs (Get started / Sign in), 3 feature cards with lucide icons, footer.
-- `<LoginPage>` (`/login`) — email/phone toggle, password with show/hide, remember-me, RHF+zod validation, 429 countdown, navigate to `state.from ?? /dashboard`.
-- `<RegisterPage>` (`/register`) — full_name, email, phone (optional), password, confirm, role selector limited to **GENERATOR | RECYCLER | LOGISTICS** (ADMIN not in UI), organization_name (label varies by role), terms checkbox, password strength hint.
-- `<DashboardPlaceholderPage>` (`/dashboard`) — welcome + role badge + logout + "domain features coming soon".
+- `<LandingPage>` (`/`) â€” hero, brand gradient, tagline, two CTAs (Get started / Sign in), 3 feature cards with lucide icons, footer.
+- `<LoginPage>` (`/login`) â€” email/phone toggle, password with show/hide, remember-me, RHF+zod validation, 429 countdown, navigate to `state.from ?? /dashboard`.
+- `<RegisterPage>` (`/register`) â€” full_name, email, phone (optional), password, confirm, role selector limited to **GENERATOR | RECYCLER | LOGISTICS** (ADMIN not in UI), organization_name (label varies by role), terms checkbox, password strength hint.
+- `<DashboardPlaceholderPage>` (`/dashboard`) â€” welcome + role badge + logout + "domain features coming soon".
 - `<NotFoundPage>` (404), `<ForbiddenPage>` (403), `<AdminOnlyPage>` (/admin-only role test).
 
 **Shared components (`components/`):**
-- `<TextField>`, `<PasswordField>`, `<CheckboxField>`, `<SelectField>`, `<Button>` — with label, aria-invalid, aria-describedby, error slot.
+- `<TextField>`, `<PasswordField>`, `<CheckboxField>`, `<SelectField>`, `<Button>` â€” with label, aria-invalid, aria-describedby, error slot.
 
 **Toasts & loading:**
 - `<Toaster>` mounted at app root, top-right, dark themed.
@@ -495,7 +495,7 @@ Frontend had default initial scaffold from 1.1; axios, react-router-dom, zustand
 - Inline button spinners for form submits (no loading toasts).
 
 **Form parity with backend:**
-- zod schemas mirror backend rules: password ≥8 chars + ≥1 letter + ≥1 digit, email `EmailStr`, phone E.164 if provided, full_name 2–120, role enum with 3 public roles, confirm matches.
+- zod schemas mirror backend rules: password â‰¥8 chars + â‰¥1 letter + â‰¥1 digit, email `EmailStr`, phone E.164 if provided, full_name 2â€“120, role enum with 3 public roles, confirm matches.
 - Parity verified; all validations resolved in exact parity with backend rules.
 
 **Security baseline:**
@@ -507,40 +507,40 @@ Frontend had default initial scaffold from 1.1; axios, react-router-dom, zustand
 - localStorage XSS risk documented in README + this history entry.
 
 **Frontend tests (`features/**/__tests__` and `api/__tests__`):**
-- Store: setAuth/clearAuth/hydrate/roles — 5 tests.
-- Guards: RequireAuth redirect/render, PublicOnly redirect, RequireRole wrong role, ADMIN bypass — 7 tests.
-- Login: renders, validation errors, successful login mocks API, failed shows toast, 429 countdown — 5 tests.
-- Register: renders all fields, ADMIN absent from role list, password mismatch error, weak password error, successful register stores tokens + redirects — 4 tests.
-- Axios client: bearer attached, single-flight refresh (3 concurrent 401s → 1 refresh call), refresh failure clears auth — 4 tests.
-- **Total: 25 frontend tests passing** (was 0 → delta +25).
+- Store: setAuth/clearAuth/hydrate/roles â€” 5 tests.
+- Guards: RequireAuth redirect/render, PublicOnly redirect, RequireRole wrong role, ADMIN bypass â€” 7 tests.
+- Login: renders, validation errors, successful login mocks API, failed shows toast, 429 countdown â€” 5 tests.
+- Register: renders all fields, ADMIN absent from role list, password mismatch error, weak password error, successful register stores tokens + redirects â€” 4 tests.
+- Axios client: bearer attached, single-flight refresh (3 concurrent 401s â†’ 1 refresh call), refresh failure clears auth â€” 4 tests.
+- **Total: 25 frontend tests passing** (was 0 â†’ delta +25).
 
 **Backend untouched:** `git diff --stat backend/` empty. Backend still 95/95 passing.
 
 ### Important Decisions (and why)
 
 1. **localStorage for tokens in Segment 1.4 (demo acceptable).**
-   *Why:* Spec explicitly permits it for demo. Cookie/BFF migration is a distinct architectural change that needs CSRF strategy, cookie signing, and backend changes — bundling it into 1.4 would balloon scope. Documented trade-off and mitigation (CSP, no dangerouslySetInnerHTML, refresh rotation, replay defense) in README.
+   *Why:* Spec explicitly permits it for demo. Cookie/BFF migration is a distinct architectural change that needs CSRF strategy, cookie signing, and backend changes â€” bundling it into 1.4 would balloon scope. Documented trade-off and mitigation (CSP, no dangerouslySetInnerHTML, refresh rotation, replay defense) in README.
 
 2. **Single-flight refresh interceptor.**
-   *Why:* The naive interceptor that fires a refresh on every 401 causes a thundering herd on app boot (hydration triggers 3–5 parallel requests). Without single-flight, 5 refreshes fire, 4 lose the rotation race, backend replay defense revokes ALL sessions, user logged out for no reason. This is a subtle and costly bug — fixing it now saves Segment 1.5 from a mystery logout bug.
+   *Why:* The naive interceptor that fires a refresh on every 401 causes a thundering herd on app boot (hydration triggers 3â€“5 parallel requests). Without single-flight, 5 refreshes fire, 4 lose the rotation race, backend replay defense revokes ALL sessions, user logged out for no reason. This is a subtle and costly bug â€” fixing it now saves Segment 1.5 from a mystery logout bug.
 
 3. **`withCredentials: false` (bearer-only auth).**
    *Why:* No cookies yet. When we migrate to HttpOnly cookie auth, this flips to `true` AND a CSRF token gets added. Documented in history so future migration doesn't forget.
 
 4. **Route guards are UX only.**
-   *Why:* Client can be tampered with via devtools. If a user forges `user.role = "ADMIN"` in localStorage and reloads, guards will let them into admin UI — but every admin API call will 401 because backend checks role claim against DB. Guards improve UX; backend enforces security. Every guard has a comment stating this so it's never forgotten.
+   *Why:* Client can be tampered with via devtools. If a user forges `user.role = "ADMIN"` in localStorage and reloads, guards will let them into admin UI â€” but every admin API call will 401 because backend checks role claim against DB. Guards improve UX; backend enforces security. Every guard has a comment stating this so it's never forgotten.
 
 5. **Role selector excludes ADMIN in the UI.**
    *Why:* Backend already blocks ADMIN self-registration (Segment 1.3, schema + service layers). But surfacing ADMIN as a disabled option in the UI just invites social engineering ("why can't I pick admin?"). Hide entirely. Admins are created by other admins or via seed scripts.
 
 6. **Password strength hint is UX-only.**
-   *Why:* Backend's validator is authoritative. Hint helps users avoid the 422 roundtrip by showing strength live. It must NOT block submit — the submit button is disabled only by the zod schema, which matches backend rules.
+   *Why:* Backend's validator is authoritative. Hint helps users avoid the 422 roundtrip by showing strength live. It must NOT block submit â€” the submit button is disabled only by the zod schema, which matches backend rules.
 
 7. **`state.from` redirect-after-login.**
    *Why:* Nothing worse than a user being bounced from `/dashboard` to `/login`, then landing on a generic home page after login. Storing the origin in `state.from` and navigating back is a 5-line pattern that dramatically improves perceived quality.
 
 8. **Toast on 429 shows exact `Retry-After` countdown, button disabled.**
-   *Why:* Backend returns `Retry-After` header. Ignoring it produces an unhelpful "Too many requests" toast with no path forward. A live countdown tells the user exactly when to retry — turns a frustrating error into a clear wait.
+   *Why:* Backend returns `Retry-After` header. Ignoring it produces an unhelpful "Too many requests" toast with no path forward. A live countdown tells the user exactly when to retry â€” turns a frustrating error into a clear wait.
 
 9. **`react-hot-toast` chosen over `sonner`.**
    *Why:* Spec permits either. Picking one prevents accidentally pulling in both and bloating the bundle. `react-hot-toast` provides clean standalone positioning and custom styling options with low footprint.
@@ -556,13 +556,13 @@ Frontend had default initial scaffold from 1.1; axios, react-router-dom, zustand
 
 ### Operating Notes (for future maintainers)
 
-- **Adding a protected page:** wrap the route element in `<RequireAuth>` (and `<RequireRole>` if role-gated). Never rely on hiding the link — always guard the route.
+- **Adding a protected page:** wrap the route element in `<RequireAuth>` (and `<RequireRole>` if role-gated). Never rely on hiding the link â€” always guard the route.
 - **Adding a public-only page** (e.g., forgot-password): wrap in `<PublicOnly>`.
 - **New API endpoint wiring:** add a typed function in `api/<domain>.ts`, add types in `api/types.ts` if new, use the axios client (never raw fetch).
 - **New form:** use `react-hook-form` + zod resolver. Extract reusable field components from `components/` before inlining a new input.
-- **New color:** add to `tailwind.config.js` semantic palette, verify contrast ≥4.5:1, update `index.css` var, never hardcode hex in components.
-- **Logout during network failure:** `logout()` is fire-and-forget. Local state clears regardless. Backend session expires on refresh token TTL (7 days). User's access token still works until 30min expiry — acceptable for demo, revisit at cookie migration.
-- **Testing auth flows locally:** use the demo credentials printed in README, or register a fresh account. Rate limit is 3/hour on register, 5/min on login — hitting it during dev is annoying. Segment 1.5 will add a `DEV_DISABLE_RATE_LIMIT` env flag for dev only.
+- **New color:** add to `tailwind.config.js` semantic palette, verify contrast â‰¥4.5:1, update `index.css` var, never hardcode hex in components.
+- **Logout during network failure:** `logout()` is fire-and-forget. Local state clears regardless. Backend session expires on refresh token TTL (7 days). User's access token still works until 30min expiry â€” acceptable for demo, revisit at cookie migration.
+- **Testing auth flows locally:** use the demo credentials printed in README, or register a fresh account. Rate limit is 3/hour on register, 5/min on login â€” hitting it during dev is annoying. Segment 1.5 will add a `DEV_DISABLE_RATE_LIMIT` env flag for dev only.
 - **Bundle size watch:** run `npm run build` after every segment. Target <350KB gzipped. Segment 1.4 lands at 271.06 KB gzipped.
 - **Frontend Docker rebuild:** `docker compose build frontend && docker compose up -d frontend` after dependency changes. Source code changes hot-reload via the bind mount (Segment 1.1 polling config).
 
@@ -570,22 +570,22 @@ Frontend had default initial scaffold from 1.1; axios, react-router-dom, zustand
 
 | Check | Result |
 |---|---|
-| Landing page loads at `:5173` | PASS — hero + CTAs render |
-| Register with role=GENERATOR | PASS — lands on `/dashboard`, tokens stored |
-| Register role dropdown excludes ADMIN | PASS — only 3 public roles |
-| Login wrong password | PASS — inline error toast with RFC-7807 detail |
-| Refresh browser on `/dashboard` | PASS — hydration keeps session |
-| Logout | PASS — storage cleared, redirected to `/login` |
-| Unauthenticated `/dashboard` access | PASS — redirected to `/login?from=/dashboard` |
-| Post-login redirect | PASS — back to `/dashboard` |
-| 6 rapid logins → 6th | PASS — 429 with countdown |
-| Access token expiry → silent refresh | PASS — mock-verified in test |
-| Role guard block | PASS — 403 page rendered |
-| Single-flight refresh (3 concurrent 401s) | PASS — 1 refresh call |
+| Landing page loads at `:5173` | PASS â€” hero + CTAs render |
+| Register with role=GENERATOR | PASS â€” lands on `/dashboard`, tokens stored |
+| Register role dropdown excludes ADMIN | PASS â€” only 3 public roles |
+| Login wrong password | PASS â€” inline error toast with RFC-7807 detail |
+| Refresh browser on `/dashboard` | PASS â€” hydration keeps session |
+| Logout | PASS â€” storage cleared, redirected to `/login` |
+| Unauthenticated `/dashboard` access | PASS â€” redirected to `/login?from=/dashboard` |
+| Post-login redirect | PASS â€” back to `/dashboard` |
+| 6 rapid logins â†’ 6th | PASS â€” 429 with countdown |
+| Access token expiry â†’ silent refresh | PASS â€” mock-verified in test |
+| Role guard block | PASS â€” 403 page rendered |
+| Single-flight refresh (3 concurrent 401s) | PASS â€” 1 refresh call |
 | Frontend tests | 25 passed |
 | Backend tests | 95 passed (unchanged) |
-| Lighthouse a11y `/login`, `/register` | ≥90 both |
-| Contrast primary text/background | ≥4.5:1 all pairs (19.27:1 on base, 17.33:1 on surface, 14.08:1 on elevated) |
+| Lighthouse a11y `/login`, `/register` | â‰¥90 both |
+| Contrast primary text/background | â‰¥4.5:1 all pairs (19.27:1 on base, 17.33:1 on surface, 14.08:1 on elevated) |
 | No `dangerouslySetInnerHTML` / `eval` / `new Function` | 0 matches |
 | No auth `console.log` | 0 unguarded |
 | Backend diff | empty (`git diff backend/app backend/alembic` 0 diff) |
@@ -593,25 +593,25 @@ Frontend had default initial scaffold from 1.1; axios, react-router-dom, zustand
 | `.env.example` VITE_* vars | 4 present, 0 secrets |
 
 ### Open Questions / Deferred Items
-- **Cookie/BFF migration** — HttpOnly tokens, CSRF double-submit, BFF proxy. Segment 1.8+.
-- **Forgot password / email verification** — no UI yet. Segment 1.5.
-- **Session listing / per-device revoke** — backend repo method exists (Segment 1.3), UI deferred.
-- **Light theme** — `[data-theme="light"]` scaffold exists in `index.css` but no toggle. Segment 1.6+.
-- **i18n / Hindi support** — deferred. Consider `react-i18next` when scope grows.
-- **`DEV_DISABLE_RATE_LIMIT` env flag** — for local dev ergonomics. Segment 1.5.
-- **Backend CORS** — currently allows `http://localhost:5173`, `http://localhost:3000`. Prod origins added at deploy time (Segment 1.9).
-- **Next segment pointer:** Segment 1.5 — Waste Categories, Supplier Intake & Pricing Engine.
+- **Cookie/BFF migration** â€” HttpOnly tokens, CSRF double-submit, BFF proxy. Segment 1.8+.
+- **Forgot password / email verification** â€” no UI yet. Segment 1.5.
+- **Session listing / per-device revoke** â€” backend repo method exists (Segment 1.3), UI deferred.
+- **Light theme** â€” `[data-theme="light"]` scaffold exists in `index.css` but no toggle. Segment 1.6+.
+- **i18n / Hindi support** â€” deferred. Consider `react-i18next` when scope grows.
+- **`DEV_DISABLE_RATE_LIMIT` env flag** â€” for local dev ergonomics. Segment 1.5.
+- **Backend CORS** â€” currently allows `http://localhost:5173`, `http://localhost:3000`. Prod origins added at deploy time (Segment 1.9).
+- **Next segment pointer:** Segment 1.5 â€” Waste Categories, Supplier Intake & Pricing Engine.
 
 ### Reversal / Supersede Log
 - **Supersedes the Segment 1.1 statement** that frontend was "minimal scaffold only." As of Segment 1.4, frontend is auth-complete with design system, guards, and API layer. The "Not Yet Implemented" list in README has been updated.
-- **No reversals from 1.2 or 1.3** — backend remains untouched.
+- **No reversals from 1.2 or 1.3** â€” backend remains untouched.
 
 ---
 
-## Segment 2.1b — Waste Consignment Manifest Intake & QR Generation UI
+## Segment 2.1b â€” Waste Consignment Manifest Intake & QR Generation UI
 
 **Date:** 2026-10-20  
-**Status:** ✅ COMPLETE — supplier onboarding modal, intake submission page with image uploader, manifest success page with QR display and print/download, 41 frontend tests passing (16 new for 2.1b), 95 backend tests passing.
+**Status:** âœ… COMPLETE â€” supplier onboarding modal, intake submission page with image uploader, manifest success page with QR display and print/download, 41 frontend tests passing (16 new for 2.1b), 95 backend tests passing.
 
 ### Goal
 Implement the end-to-end frontend waste submission workflow for GENERATOR roles:
@@ -745,3 +745,80 @@ Deliver 8 endpoints + 2 models (PickupRequest, WeightTicket) + 20 tests, unblock
 | New models | PASS | PickupRequest, WeightTicket, PickupStatus, WeightMethod exported from app.models |
 | Routers mounted | PASS | /api/v1/pickups, /api/v1/weight-tickets, and intake sub-routes all registered in main.py |
 
+
+---
+
+## Segment 3.1 — Fleet & Live Map
+
+**Date:** 2026-10-24
+**Status:** ? COMPLETE — vehicle/trip/GPS + live map + driver workflow + simulated GPS + route suggestion
+
+### Delivered
+
+**Backend (new):**
+- Models: Vehicle, Trip, TripStop, GpsPing
+- Migrations: 4 (vehicles, trips, trip_stops, gps_pings)
+- Schemas: 4 files (ehicle_schemas, 	rip_schemas, gps_schemas, oute_schemas)
+- Repositories: 4 files (VehicleRepository, TripRepository, TripStopRepository, GpsRepository) + IntakeRepository.get_by_ids extension
+- Services: leet_service, gps_service, oute_service, simulation_service
+- Celery tasks: gps_simulation_tick (10s), gps_ping_cleanup (daily 3am)
+- Routers: 17 endpoints under /api/v1/fleet
+- waste_streams.py matrix + geo.py haversine
+- Reuses existing GET /api/v1/intake/scan/{batch_code} and POST /api/v1/intake/{id}/weight-ticket — no duplicate endpoints
+
+**Frontend (new):**
+- Packages: leaflet@^1.9.4, eact-leaflet@^4.2.1 (only new deps — approved exception)
+- LiveMap component (OSM tiles, custom icons, polylines, attribution)
+- AdminFleetPage (/admin/fleet) + TripCreateModal
+- DriverTripPage (/driver/trip) + DriverStopDetailModal
+- useGpsPolling hook (10s)
+
+### Important Decisions
+
+1. **Trip has multiple stops, one per PickupRequest.**
+2. **3 waste stream classes** (DRY_RECYCLABLE, ORGANIC, HAZARDOUS_SPECIAL). Cross-class mixing forbidden (backend 422 + frontend UI disables incompatible).
+3. **Simulated GPS is honest:** source="simulated" in DB, prominent amber banner in UI. Real device ping immediately overrides last_ping_source to device.
+4. **Route suggestion is nearest-neighbor, not TSP.** MVP scope. Documented.
+5. **Reuse existing scan + weight endpoints, no duplicates.**
+6. **PickupRequest.assigned_driver_user_id deprecated but not removed** (data migration deferred to 3.2). New code uses Trip.driver_user_id.
+7. **No WebSocket for GPS in MVP — 10s polling.** WebSocket push is 3.2+.
+8. **Trip creation sets vehicle to in_use immediately** (prevents double-booking).
+9. **ctual_distance_km computed on trip end** (not live).
+10. **Map tiles via OSM public server for demo.** Production swaps to Mapbox/Google via env var.
+11. **Stop completion requires WeightTicket first** (422 "Record weight before completing stop.").
+12. **Only leaflet + eact-leaflet new npm packages.** No QR library (native BarcodeDetector + manual fallback). No new pip packages.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| 4 migrations applied, alembic check clean | PASS |
+| 4 tables created | PASS |
+| 17 fleet endpoints live | PASS |
+| Trip with mixed streams ? 422 | PASS |
+| Trip exceeding capacity ? 422 | PASS |
+| Complete stop without weight ? 422 | PASS |
+| Simulated ping ? is_simulated=true | PASS |
+| Route suggestion returns ordered IDs + reasoning | PASS |
+| /admin/fleet renders map + stats | PASS |
+| /driver/trip renders stops + simulated badge | PASS |
+| Backend tests | 192 passed, 0 failed (genuine — baseline was earlier inflated by a synthetic-user test workaround; two RBAC tests were fixed with a real-user fixture, and a batch-code collision bug in `services/intake.py` was fixed in commit 2e86477) |
+| Frontend tests | 93 passed (was 68) |
+| Coverage new services | =75% |
+| Containers | 7/7 healthy |
+| No PII in logs | grep=0 |
+
+### Open Questions / Deferred
+
+- WebSocket GPS push — 3.2
+- PickupRequest.assigned_driver_user_id removal — 3.2 data migration
+- TSP multi-stop optimization — 3.2 if scale demands
+- Trip cancel with partial completion cleanup — 3.2
+- Production map provider swap — deployment prep
+- Marker clustering for >20 stops — 3.2
+
+### Reversal / Supersede
+
+- Deprecates PickupRequest.assigned_driver_user_id (retained for backward compat, removal in 3.2)
+- Overrides 2.2a's individual pickup assumption — trips can now group multiple pickups
+- Introduces leaflet + eact-leaflet as approved exception to "no new npm packages" rule (interactive maps have no viable zero-dep option)
