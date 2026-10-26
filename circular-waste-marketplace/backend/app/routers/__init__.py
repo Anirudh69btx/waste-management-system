@@ -12,6 +12,7 @@ from app.routers.pricing import router as _pr
 from app.routers.payments import router as _pay
 from app.routers.rewards import router as _r
 from app.routers.eco_store import router as _e
+from app.routers.analytics import router as analytics_router
 from app.routers.analytics import router as _a
 from app.routers.ai_assessment import router as _ai
 from app.routers.health import router as _h
@@ -20,11 +21,14 @@ from app.routers import fleet
 from app.routers import sorting
 from app.routers import marketplace
 from app.routers import traceability
+from app.routers import analytics
 
 __all__ = [
     "fleet_router",
+    "analytics_router",
     "fleet",
     "sorting",
     "marketplace",
     "traceability",
+    "analytics",
 ]
