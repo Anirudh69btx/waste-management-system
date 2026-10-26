@@ -554,6 +554,10 @@ class MarketplaceService:
 
         await session.commit()
         await session.refresh(order)
+
+        from app.services import rewards_service
+        await rewards_service.on_order_completed(order, session, request_id=request_id)
+
         return order
 
     @staticmethod

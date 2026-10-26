@@ -359,6 +359,10 @@ class PickupService:
         )
         await self._db.commit()
 
+        if payload.new_status == PickupStatus.COMPLETED.value:
+            from app.services import rewards_service
+            await rewards_service.on_pickup_completed(pickup, self._db, request_id=request_id)
+
         loaded = await self._pickup_repo.get_by_id(pickup.id)
         return _to_pickup_read(loaded or pickup)
 

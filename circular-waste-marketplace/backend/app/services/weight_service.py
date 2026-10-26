@@ -243,6 +243,9 @@ class WeightService:
         )
         await self._db.commit()
 
+        from app.services import rewards_service
+        await rewards_service.on_intake_weighed(intake, self._db, request_id=request_id)
+
         loaded = await self._weight_repo.get_by_id(ticket.id)
         return _to_weight_read(loaded or ticket)
 

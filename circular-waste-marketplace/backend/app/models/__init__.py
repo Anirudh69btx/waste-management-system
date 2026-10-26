@@ -587,6 +587,10 @@ class MarketplaceListing(Base, TimestampMixin):
 
 # Reward Wallets & Transactions
 # ---------------------------------------------------------------------------
+from datetime import date as _date
+from decimal import Decimal as _Decimal
+from sqlalchemy import Date as _Date, Numeric as _Numeric
+
 
 class RewardWallet(Base):
     """Green points balance for a user — one-to-one with User."""
@@ -599,10 +603,19 @@ class RewardWallet(Base):
         PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"),
         unique=True, nullable=False
     )
-    available_points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    lifetime_earned: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    lifetime_redeemed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    points_balance: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    lifetime_points: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    streak_days: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    last_submission_date: Mapped[Optional[_date]] = mapped_column(_Date, nullable=True)
+    available_points: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    lifetime_earned: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    lifetime_redeemed: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
 
     user: Mapped["User"] = relationship("User", back_populates="reward_wallet")
     transactions: Mapped[list["RewardTransaction"]] = relationship(
@@ -616,20 +629,30 @@ class RewardTransaction(Base):
     """Immutable reward ledger entry — append-only, never updated."""
     __tablename__ = "reward_transactions"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     wallet_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("reward_wallets.id", ondelete="RESTRICT"), nullable=False
+        PG_UUID(as_uuid=True), ForeignKey("reward_wallets.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     intake_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("waste_intakes.id", ondelete="SET NULL"), nullable=True
     )
     order_id: Mapped[Optional[uuid.UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
     points_delta: Mapped[int] = mapped_column(Integer, nullable=False)
-    transaction_type: Mapped[RewardTransactionType] = mapped_column(
-        Enum(RewardTransactionType, native_enum=False), nullable=False
-    )
+    transaction_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    reference_type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    reference_id: Mapped[Optional[uuid.UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
     description: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(
+        "metadata", JSONB, nullable=False, default=dict, server_default="{}"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
     wallet: Mapped["RewardWallet"] = relationship("RewardWallet", back_populates="transactions")
 
@@ -648,20 +671,41 @@ class EcoProduct(Base):
         PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    slug: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False)
-    category: Mapped[EcoProductCategory] = mapped_column(
-        Enum(EcoProductCategory, native_enum=False), nullable=False
+    slug: Mapped[str] = mapped_column(
+        String(255), unique=True, nullable=False, default=lambda: f"eco-{uuid.uuid4().hex[:12]}"
     )
-    price_fiat: Mapped[float] = mapped_column(Double, nullable=False)
-    max_points_discount_percent: Mapped[float] = mapped_column(Double, default=50.0, nullable=False)
-    stock_quantity: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    carbon_offset_kg: Mapped[float] = mapped_column(Double, default=0.0, nullable=False)
-    image_url: Mapped[str] = mapped_column(String(500), nullable=False)
-    is_featured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default="")
+    category: Mapped[str] = mapped_column(String(32), nullable=False)
+    price: Mapped[_Decimal] = mapped_column(
+        "price_fiat", _Numeric(12, 2), default=0, server_default="0", nullable=False
+    )
+    max_points_discount_percent: Mapped[float] = mapped_column(
+        Double, default=50.0, server_default="50.0", nullable=False
+    )
+    stock_quantity: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    carbon_offset_kg: Mapped[float] = mapped_column(Double, default=0.0, server_default="0.0", nullable=False)
+    image_url: Mapped[str] = mapped_column(String(500), default="", server_default="", nullable=False)
+    is_featured: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+    unit: Mapped[str] = mapped_column(String(32), default="piece", server_default="piece", nullable=False)
+    weight_kg: Mapped[Optional[_Decimal]] = mapped_column(_Numeric(10, 3), nullable=True, default=0)
+    points_cost: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    @property
+    def price_fiat(self) -> float:
+        return float(self.price or 0)
+
+    @price_fiat.setter
+    def price_fiat(self, val: float) -> None:
+        self.price = _Decimal(str(val))
 
     __table_args__ = (Index("idx_eco_products_cat_stock", "category", "stock_quantity"),)
+
+
+EcoStoreProduct = EcoProduct
 
 
 class EcoOrder(Base):
@@ -671,21 +715,50 @@ class EcoOrder(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    order_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    order_code: Mapped[str] = mapped_column("order_number", String(50), unique=True, nullable=False)
     user_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
-    gross_amount: Mapped[float] = mapped_column(Double, nullable=False)
-    points_redeemed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    points_discount_amount: Mapped[float] = mapped_column(Double, default=0.0, nullable=False)
-    net_payable_amount: Mapped[float] = mapped_column(Double, nullable=False)
+    product_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("eco_products.id", ondelete="RESTRICT"), nullable=True
+    )
+    product_title: Mapped[str] = mapped_column(String(255), default="", server_default="", nullable=False)
+    points_paid: Mapped[int] = mapped_column(
+        "points_redeemed", Integer, default=0, server_default="0", nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(32), default="pending", server_default="pending", nullable=False)
+    gross_amount: Mapped[float] = mapped_column(Double, default=0.0, server_default="0.0", nullable=False)
+    points_discount_amount: Mapped[float] = mapped_column(Double, default=0.0, server_default="0.0", nullable=False)
+    net_payable_amount: Mapped[float] = mapped_column(Double, default=0.0, server_default="0.0", nullable=False)
     payment_status: Mapped[PaymentStatus] = mapped_column(
         Enum(PaymentStatus, native_enum=False), default=PaymentStatus.PENDING, nullable=False
     )
     payment_gateway_ref: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    shipping_address: Mapped[str] = mapped_column(Text, nullable=False)
-    items_snapshot: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    shipping_address: Mapped[str] = mapped_column(
+        Text, default="Voucher Redemption", server_default="Voucher Redemption", nullable=False
+    )
+    items_snapshot: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, default=list, server_default="[]", nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    @property
+    def order_number(self) -> str:
+        return self.order_code
+
+    @order_number.setter
+    def order_number(self, val: str) -> None:
+        self.order_code = val
+
+    @property
+    def points_redeemed(self) -> int:
+        return self.points_paid
+
+    @points_redeemed.setter
+    def points_redeemed(self, val: int) -> None:
+        self.points_paid = val
 
     __table_args__ = (Index("idx_eco_orders_user", "user_id", "created_at"),)
 
