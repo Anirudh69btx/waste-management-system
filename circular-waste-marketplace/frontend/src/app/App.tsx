@@ -33,6 +33,7 @@ import { DriverTripPage } from "@/features/fleet/pages/DriverTripPage";
 import { SorterConsolePage } from "@/features/sorting/pages/SorterConsolePage";
 import { MarketplacePage } from "@/features/marketplace/pages/MarketplacePage";
 import { MyOrdersPage } from "@/features/marketplace/pages/MyOrdersPage";
+import { OrderReceiptPage } from "@/features/marketplace/pages/OrderReceiptPage";
 import { ListingDetailPage } from "@/features/marketplace/pages/ListingDetailPage";
 import SellerInventoryPage from "@/features/seller/pages/SellerInventoryPage";
 import SellerListingsPage from "@/features/seller/pages/SellerListingsPage";
@@ -278,6 +279,14 @@ export const App: React.FC = () => {
                   <RequireRole roles={["RECYCLER", "ADMIN"]}>
                     <MyOrdersPage />
                   </RequireRole>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/marketplace/orders/:id"
+              element={
+                <RequireAuth>
+                  <OrderReceiptPage />
                 </RequireAuth>
               }
             />

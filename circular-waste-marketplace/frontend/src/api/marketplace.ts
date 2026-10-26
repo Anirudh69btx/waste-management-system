@@ -55,6 +55,11 @@ export async function listMyOrders(params: { role?: "buyer" | "seller"; limit?: 
   return res.data;
 }
 
+export async function getOrder(id: string): Promise<PurchaseOrderRead> {
+  const res = await apiClient.get<PurchaseOrderRead>(`/marketplace/orders/${id}`);
+  return res.data;
+}
+
 export async function confirmPayment(orderId: string): Promise<PurchaseOrderRead> {
   const res = await apiClient.post<PurchaseOrderRead>(`/marketplace/orders/${orderId}/confirm-payment`, {});
   return res.data;

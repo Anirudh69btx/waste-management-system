@@ -246,7 +246,12 @@ export const SellerOrdersPage: React.FC = () => {
                     <tr key={order.id} className="hover:bg-slate-800/30 transition-colors">
                       {/* Order Code */}
                       <td className="py-3.5 px-4 font-mono font-bold text-white whitespace-nowrap">
-                        {order.order_code}
+                        <Link
+                          to={`/marketplace/orders/${order.id}`}
+                          className="text-emerald-400 hover:text-emerald-300 hover:underline"
+                        >
+                          {order.order_code}
+                        </Link>
                       </td>
 
                       {/* Listing Title */}

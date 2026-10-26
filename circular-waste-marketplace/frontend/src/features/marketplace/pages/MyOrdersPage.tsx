@@ -204,7 +204,12 @@ export const MyOrdersPage: React.FC = () => {
                   return (
                     <tr key={order.id} className="hover:bg-slate-800/30 transition-colors">
                       <td className="px-6 py-4 font-bold text-white whitespace-nowrap">
-                        {order.order_code}
+                        <Link
+                          to={`/marketplace/orders/${order.id}`}
+                          className="text-brand-400 hover:text-brand-300 hover:underline"
+                        >
+                          {order.order_code}
+                        </Link>
                       </td>
                       <td className="px-6 py-4 font-sans text-slate-200 font-medium max-w-xs truncate">
                         <Link
@@ -231,42 +236,51 @@ export const MyOrdersPage: React.FC = () => {
                         {new Date(order.created_at).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 text-right whitespace-nowrap">
-                        {order.status === "pending_payment" && (
-                          <button
-                            type="button"
-                            onClick={() => handleConfirmPayment(order.id)}
-                            disabled={isActionLoading}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition-colors shadow-sm disabled:opacity-50"
+                        <div className="inline-flex items-center justify-end gap-2">
+                          <Link
+                            to={`/marketplace/orders/${order.id}`}
+                            className="px-2.5 py-1 text-xs font-sans font-semibold rounded-lg bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/60 transition-colors"
                           >
-                            <CreditCard className="h-3 w-3" />
-                            <span>Confirm payment</span>
-                          </button>
-                        )}
+                            View receipt
+                          </Link>
 
-                        {order.status === "escrow_held" && (
-                          <button
-                            type="button"
-                            onClick={() => handleCompleteOrder(order.id)}
-                            disabled={isActionLoading}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-500 text-white hover:bg-blue-400 transition-colors shadow-sm disabled:opacity-50"
-                          >
-                            <CheckCircle2 className="h-3 w-3" />
-                            <span>Mark received</span>
-                          </button>
-                        )}
+                          {order.status === "pending_payment" && (
+                            <button
+                              type="button"
+                              onClick={() => handleConfirmPayment(order.id)}
+                              disabled={isActionLoading}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition-colors shadow-sm disabled:opacity-50"
+                            >
+                              <CreditCard className="h-3 w-3" />
+                              <span>Confirm payment</span>
+                            </button>
+                          )}
 
-                        {order.status === "completed" && (
-                          <span className="text-emerald-400 text-xs font-sans font-medium flex items-center justify-end gap-1">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            <span>Settled</span>
-                          </span>
-                        )}
+                          {order.status === "escrow_held" && (
+                            <button
+                              type="button"
+                              onClick={() => handleCompleteOrder(order.id)}
+                              disabled={isActionLoading}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-500 text-white hover:bg-blue-400 transition-colors shadow-sm disabled:opacity-50"
+                            >
+                              <CheckCircle2 className="h-3 w-3" />
+                              <span>Mark received</span>
+                            </button>
+                          )}
 
-                        {["cancelled", "refunded"].includes(order.status) && (
-                          <span className="text-rose-400 text-xs font-sans">
-                            {order.cancellation_reason || "Cancelled"}
-                          </span>
-                        )}
+                          {order.status === "completed" && (
+                            <span className="text-emerald-400 text-xs font-sans font-medium flex items-center justify-end gap-1">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              <span>Settled</span>
+                            </span>
+                          )}
+
+                          {["cancelled", "refunded"].includes(order.status) && (
+                            <span className="text-rose-400 text-xs font-sans">
+                              {order.cancellation_reason || "Cancelled"}
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

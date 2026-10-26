@@ -1499,4 +1499,41 @@ Backend AI (5 modules, Celery classifier, `GET /ai/assessments/{id}` endpoint) w
 
 ---
 
+## Segments 5.1 + 5.2 + 5.3 — Demo Polish, Pitch Docs & Payment UX — 2026-10-26
+
+### Delivered
+- **5.1 — Demo Login Buttons:**
+  - `DemoLoginPanel` on `/login` gated by `VITE_DEMO_MODE=true`
+  - 5 one-click role buttons (Supplier, Sorter, Driver, Buyer, Admin) with auto-navigation
+  - 3 new tests
+- **5.2 — Final Polish (Docs):**
+  - `README.md` hero section (problem, 4-role table, 60s quickstart, doc index)
+  - `docs/architecture.md` (4 Mermaid diagrams)
+  - `docs/pitch-deck-outline.md` (10 slides)
+  - `docs/demo-script.md` (90-second walkthrough + recovery table)
+  - `docs/faq.md` (15 judge Q&As)
+  - `docs/screenshots/README.md` (capture guide)
+  - `GET /version` endpoint
+- **5.3 — Payment UX Polish (Mock Only):**
+  - `OrderReceiptPage` at `/marketplace/orders/:id` with status hero, summary, 4-step payment timeline, printable invoice
+  - `BuyNowModal` 3-step flow (Review → 2.5s escrow animation → Receipt redirect)
+  - Order code links on `MyOrdersPage` and `SellerOrdersPage`
+  - 3 new tests
+
+### Important Decisions
+1. **`VITE_DEMO_MODE` defaults to `false` in `.env.example` and `docker-compose.prod.yml`.** Demo buttons never appear in production unless explicitly enabled.
+2. **Mock escrow kept — real Stripe deferred post-hackathon.** A 2.5s realistic escrow animation + dedicated receipt page delivers 95% of the demo impact of real Stripe with 0% of the webhook/tunnel fragility during a live presentation.
+3. **Browser `window.print()` with `@media print` for invoices** instead of `jspdf` — zero new npm dependencies, crisp vector PDF output in every modern browser.
+4. **3 separate commits** (one per phase) so any phase can be cherry-picked or reverted independently.
+
+### Verification
+| Check | Result |
+|---|---|
+| tsc | 0 errors |
+| Frontend tests | 166 (was 160, +6) |
+| Backend tests | 228 |
+| Total tests | **394** |
+| Containers | 7/7 healthy |
+
+
 

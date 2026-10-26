@@ -1,7 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ShieldCheck, ShoppingCart, AlertCircle, ArrowRight } from "lucide-react";
+import {
+  X,
+  ShieldCheck,
+  ShoppingCart,
+  AlertCircle,
+  ArrowRight,
+  CheckCircle2,
+  Check,
+  Loader2,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import { buyNow } from "@/api/marketplace";
 import type { MarketplaceListingRead } from "@/api/types";
@@ -14,6 +23,16 @@ export interface BuyNowModalProps {
   onPurchased?: () => void;
 }
 
+type ModalStep = "review" | "processing" | "success";
+
+const PROCESSING_SUBSTEPS = [
+  "Contacting payment provider...",
+  "Holding funds in escrow...",
+  "Confirming order...",
+];
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export const BuyNowModal: React.FC<BuyNowModalProps> = ({
   open,
   onClose,
@@ -22,8 +41,30 @@ export const BuyNowModal: React.FC<BuyNowModalProps> = ({
   onPurchased,
 }) => {
   const navigate = useNavigate();
+  const [step, setStep] = useState<ModalStep>("review");
+  const [substepIndex, setSubstepIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setStep("review");
+      setSubstepIndex(0);
+      setSubmitting(false);
+      setErrorMsg(null);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (step !== "processing") return;
+    setSubstepIndex(0);
+    const interval = setInterval(() => {
+      setSubstepIndex((prev) =>
+        prev < PROCESSING_SUBSTEPS.length ? prev + 1 : prev
+      );
+    }, 800);
+    return () => clearInterval(interval);
+  }, [step]);
 
   if (!open || !listing) return null;
 
@@ -32,13 +73,21 @@ export const BuyNowModal: React.FC<BuyNowModalProps> = ({
   const handleConfirm = async () => {
     setErrorMsg(null);
     setSubmitting(true);
+    setStep("processing");
     try {
-      const order = await buyNow(listing.id, { quantity_kg: quantityKg });
+      const [order] = await Promise.all([
+        buyNow(listing.id, { quantity_kg: quantityKg }),
+        sleep(2500),
+      ]);
+      setSubstepIndex(PROCESSING_SUBSTEPS.length);
+      setStep("success");
       toast.success(`Order created — ${order.order_code}`);
+      await sleep(1000);
       if (onPurchased) onPurchased();
       onClose();
-      navigate("/marketplace/orders");
+      navigate(`/marketplace/orders/${order.id}`);
     } catch (err: any) {
+      setStep("review");
       const status = err.response?.status;
       const detail = err.response?.data?.detail;
 
@@ -89,7 +138,9 @@ export const BuyNowModal: React.FC<BuyNowModalProps> = ({
               </span>
               <div>
                 <h2 className="text-base font-bold text-white">Confirm Buy Now</h2>
-                <p className="text-xs text-slate-400 font-mono truncate max-w-xs">{listing.title}</p>
+                <p className="text-xs text-slate-400 font-mono truncate max-w-xs">
+                  {listing.title}
+                </p>
               </div>
             </div>
             <button
@@ -103,69 +154,132 @@ export const BuyNowModal: React.FC<BuyNowModalProps> = ({
           </div>
 
           <div className="p-6 space-y-5">
-            {errorMsg && (
-              <div className="p-3 text-xs rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <span>{errorMsg}</span>
+            {step === "review" && (
+              <>
+                {errorMsg && (
+                  <div className="p-3 text-xs rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>{errorMsg}</span>
+                  </div>
+                )}
+
+                {/* Order Breakdown */}
+                <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-3 font-mono text-xs">
+                  <div className="flex justify-between text-slate-300">
+                    <span className="font-sans text-slate-400">Order Quantity:</span>
+                    <span className="font-bold text-white">{quantityKg.toFixed(1)} kg</span>
+                  </div>
+                  <div className="flex justify-between text-slate-300">
+                    <span className="font-sans text-slate-400">Unit Price:</span>
+                    <span>₹{listing.price_per_kg.toFixed(2)} / kg</span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-800 flex justify-between text-sm font-bold">
+                    <span className="font-sans text-slate-200">Total Purchase Amount:</span>
+                    <span className="text-emerald-400 font-bold">
+                      ₹{totalAmount.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Escrow Notice */}
+                <div className="rounded-xl border border-blue-900/40 bg-blue-950/30 p-3.5 flex items-start gap-3 text-xs text-blue-300">
+                  <ShieldCheck className="h-5 w-5 text-blue-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-blue-200">
+                      Escrow Protected Transaction
+                    </p>
+                    <p className="text-blue-300/80 mt-0.5 leading-relaxed">
+                      Payment will be held in escrow until delivery is confirmed.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    disabled={submitting}
+                    className="px-4 py-2 text-xs font-semibold rounded-xl text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-slate-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirm}
+                    disabled={submitting}
+                    className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold rounded-xl bg-brand-500 text-slate-950 hover:bg-brand-400 transition-colors shadow-lg shadow-brand-500/20 disabled:opacity-50"
+                  >
+                    <span>Confirm & Pay ₹{totalAmount.toLocaleString()}</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </>
+            )}
+
+            {step === "processing" && (
+              <div className="py-6 space-y-5 text-center">
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">
+                    🔒 Securing your payment in escrow...
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Reserving {quantityKg.toFixed(1)} kg for ₹{totalAmount.toLocaleString()}
+                  </p>
+                </div>
+
+                <div className="max-w-xs mx-auto space-y-2.5 text-left">
+                  {PROCESSING_SUBSTEPS.map((label, idx) => {
+                    const isDone = substepIndex > idx;
+                    const isActive = substepIndex === idx;
+                    return (
+                      <div
+                        key={label}
+                        className="flex items-center gap-2.5 text-xs font-mono"
+                      >
+                        {isDone ? (
+                          <span className="h-4 w-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                            <Check className="h-3 w-3" />
+                          </span>
+                        ) : isActive ? (
+                          <Loader2 className="h-4 w-4 text-blue-400 animate-spin shrink-0" />
+                        ) : (
+                          <span className="h-4 w-4 rounded-full border border-slate-700 shrink-0" />
+                        )}
+                        <span
+                          className={
+                            isDone
+                              ? "text-emerald-300"
+                              : isActive
+                              ? "text-white font-semibold"
+                              : "text-slate-500"
+                          }
+                        >
+                          {label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
-            {/* Order Breakdown */}
-            <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-3 font-mono text-xs">
-              <div className="flex justify-between text-slate-300">
-                <span className="font-sans text-slate-400">Order Quantity:</span>
-                <span className="font-bold text-white">{quantityKg.toFixed(1)} kg</span>
-              </div>
-              <div className="flex justify-between text-slate-300">
-                <span className="font-sans text-slate-400">Unit Price:</span>
-                <span>₹{listing.price_per_kg.toFixed(2)} / kg</span>
-              </div>
-              <div className="pt-2 border-t border-slate-800 flex justify-between text-sm font-bold">
-                <span className="font-sans text-slate-200">Total Purchase Amount:</span>
-                <span className="text-emerald-400 font-bold">₹{totalAmount.toLocaleString()}</span>
-              </div>
-            </div>
-
-            {/* Escrow Notice */}
-            <div className="rounded-xl border border-blue-900/40 bg-blue-950/30 p-3.5 flex items-start gap-3 text-xs text-blue-300">
-              <ShieldCheck className="h-5 w-5 text-blue-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold text-blue-200">Escrow Protected Transaction</p>
-                <p className="text-blue-300/80 mt-0.5 leading-relaxed">
-                  Payment will be held in escrow until delivery is confirmed.
+            {step === "success" && (
+              <div className="py-8 text-center space-y-3">
+                <div className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+                  <CheckCircle2 className="h-8 w-8" />
+                </div>
+                <h3 className="text-base font-extrabold text-white">
+                  Payment secured!
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Redirecting to your escrow receipt...
                 </p>
               </div>
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={submitting}
-                className="px-4 py-2 text-xs font-semibold rounded-xl text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-slate-700 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirm}
-                disabled={submitting}
-                className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold rounded-xl bg-brand-500 text-slate-950 hover:bg-brand-400 transition-colors shadow-lg shadow-brand-500/20 disabled:opacity-50"
-              >
-                {submitting ? (
-                  <>
-                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-slate-950 border-t-transparent" />
-                    <span>Processing...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Confirm & Pay ₹{totalAmount.toLocaleString()}</span>
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </>
-                )}
-              </button>
-            </div>
+            )}
           </div>
         </motion.div>
       </div>
