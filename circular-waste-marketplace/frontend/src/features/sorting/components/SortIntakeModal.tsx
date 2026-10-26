@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { processSorting } from "@/api/sorting";
 import type { WasteIntakeListItem, InventoryLotCreate } from "@/api/types";
 import { WASTE_CATEGORY_MAP } from "@/constants/wasteCategories";
+import { AIAssessmentCard } from "@/features/ai/components/AIAssessmentCard";
 
 export interface SortIntakeModalProps {
   open: boolean;
@@ -315,6 +316,14 @@ export const SortIntakeModal: React.FC<SortIntakeModalProps> = ({
                 <span>{fieldErrors.submit}</span>
               </div>
             )}
+
+            {/* AI Reference Hint */}
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-slate-400">
+                🎯 AI reference — use as a hint, not a directive
+              </p>
+              <AIAssessmentCard intakeId={intake.id} variant="compact" />
+            </div>
 
             {/* Section 1: Weight Breakdown */}
             <div className="space-y-3 rounded-xl border border-slate-800/80 bg-slate-950/40 p-4">

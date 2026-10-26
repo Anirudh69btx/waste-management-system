@@ -824,5 +824,21 @@ export interface ActivityFeedResponse {
   total: number;
 }
 
+// ─── Segment 5.0 — AI Assessment (real backend schema) ───
+
+export interface WasteAssessment {
+  id: string;
+  intake_id: string;
+  detected_category: string;
+  confidence_score: number;              // 0.0 - 1.0
+  estimated_purity_percentage: number;   // 0.0 - 100.0
+  contamination_detected: boolean;
+  contamination_details: string[];
+  suggested_purity_grade: "A" | "B" | "C";
+  model_version: string;
+  latency_ms: number | null;
+  created_at: string;
+}
+
 
 

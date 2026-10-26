@@ -26,6 +26,7 @@ import { getWeightTicket, acknowledgeWeight } from "@/api/weightTickets";
 import { listPickups, cancelPickup, createPickup } from "@/api/pickups";
 import { PickupSchedulingModal } from "../components/PickupSchedulingModal";
 import { TraceabilityTimeline } from "@/features/traceability/components/TraceabilityTimeline";
+import { AIAssessmentCard } from "@/features/ai/components/AIAssessmentCard";
 import type { WasteIntake, PickupRequestRead, WeightTicketRead } from "@/api/types";
 import { WASTE_CATEGORY_MAP } from "@/constants/wasteCategories";
 
@@ -463,6 +464,9 @@ export const SupplierBatchDetailPage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: 2/3 */}
           <div className="lg:col-span-2 space-y-6">
+            {/* AI Classification Card */}
+            <AIAssessmentCard intakeId={id!} variant="compact" />
+
             {/* Traceability Timeline */}
             <div className="glass-card rounded-2xl p-6 border border-white/10">
               <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-6 flex items-center gap-2">

@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/Button";
 import { getIntake, getIntakeQr } from "@/api/waste";
 import type { WasteIntake, QRCodeResponse } from "@/api/types";
+import { AIAssessmentCard } from "@/features/ai/components/AIAssessmentCard";
 
 export const IntakeSuccessPage: React.FC = () => {
   const { intakeId } = useParams<{ intakeId: string }>();
@@ -133,6 +134,9 @@ export const IntakeSuccessPage: React.FC = () => {
             </span>
           </div>
         </div>
+
+        {/* AI Assessment Card */}
+        <AIAssessmentCard intakeId={intakeId!} variant="full" />
 
         {/* QR Code — direct base64 data URL, no blob */}
         <div className="flex flex-col items-center gap-3">
