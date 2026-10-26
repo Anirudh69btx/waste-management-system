@@ -13,6 +13,7 @@ import { TextField } from "@/components/TextField";
 import { PasswordField } from "@/components/PasswordField";
 import { CheckboxField } from "@/components/CheckboxField";
 import { useAuthStore } from "../store";
+import { DemoLoginPanel } from "../components/DemoLoginPanel";
 
 const emailLoginSchema = z.object({
   email: z
@@ -284,6 +285,9 @@ export const LoginPage: React.FC = () => {
             </Button>
           </form>
         )}
+
+        {/* Demo One-Click Sign-In Panel (only rendered when VITE_DEMO_MODE="true") */}
+        <DemoLoginPanel />
 
         {/* Footer Navigation */}
         <div className="mt-6 pt-5 border-t border-border-subtle text-center text-xs text-text-secondary">
