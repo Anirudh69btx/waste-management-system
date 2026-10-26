@@ -701,4 +701,64 @@ export interface AdminAnalytics {
 
 export type AnalyticsPeriod = "7d" | "30d" | "90d";
 
+// ─── Segment 3.3b types ───
+
+export interface RewardWallet {
+  id: string;
+  user_id: string;
+  points_balance: number;
+  lifetime_points: number;
+  streak_days: number;
+  last_submission_date: string | null;
+  created_at: string;
+}
+
+export interface RewardTransaction {
+  id: string;
+  points_delta: number;
+  transaction_type: string;
+  description: string;
+  reference_type: string | null;
+  reference_id: string | null;
+  created_at: string;
+}
+
+export interface EcoProduct {
+  id: string;
+  title: string;
+  description: string | null;
+  price: number;
+  stock_quantity: number;
+  category: string;
+  unit: string;
+  weight_kg: number | null;
+  points_cost: number;
+  is_active: boolean;
+}
+
+export interface EcoOrder {
+  id: string;
+  order_code: string;
+  product_id: string;
+  product_title: string;
+  points_paid: number;
+  status: string;
+  created_at: string;
+}
+
+export interface LeaderboardEntry {
+  user_id: string;
+  display_name: string;
+  points: number;
+  rank: number;
+}
+
+export interface LeaderboardResponse {
+  period: string;
+  entries: LeaderboardEntry[];
+}
+
+export type LeaderboardPeriod = "week" | "month" | "all_time";
+
+
 

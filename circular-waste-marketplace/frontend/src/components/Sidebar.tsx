@@ -11,13 +11,14 @@ import {
   PackageOpen,
   Award,
   BarChart3,
-  Settings,
   Layers,
   Tag,
   Gavel,
   Truck,
+  Trophy,
 } from "lucide-react";
 import { useAuthStore } from "@/features/auth/authStore";
+import { WalletBadge } from "@/features/rewards/components/WalletBadge";
 
 export const Sidebar: React.FC = () => {
   const { t } = useTranslation();
@@ -111,8 +112,14 @@ export const Sidebar: React.FC = () => {
     },
     {
       to: "/rewards",
-      label: t("nav.rewards"),
+      label: "Rewards",
       icon: Award,
+      roles: ["GENERATOR", "LOGISTICS", "RECYCLER", "ADMIN"],
+    },
+    {
+      to: "/rewards/leaderboard",
+      label: "Leaderboard",
+      icon: Trophy,
       roles: ["GENERATOR", "LOGISTICS", "RECYCLER", "ADMIN"],
     },
     {
@@ -128,6 +135,9 @@ export const Sidebar: React.FC = () => {
   return (
     <aside className="w-64 shrink-0 hidden md:block">
       <div className="sticky top-20 p-4 glass-card rounded-2xl border border-white/10 space-y-1">
+        <div className="px-1 pb-2">
+          <WalletBadge />
+        </div>
         <div className="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
           Workspace Navigation
         </div>
@@ -137,6 +147,7 @@ export const Sidebar: React.FC = () => {
             <NavLink
               key={item.to}
               to={item.to}
+              end={item.to === "/rewards" || item.to === "/dashboard"}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                   isActive

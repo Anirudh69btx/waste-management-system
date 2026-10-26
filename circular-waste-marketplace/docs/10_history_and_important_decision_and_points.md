@@ -1112,4 +1112,97 @@ Deliver seller-facing marketplace workflows (inventory lot inspection, listing c
 
 ---
 
+## Segment 3.3b — Rewards System
+
+**Date:** 2026-10-26
+**Status:** ✅ COMPLETE — points engine, streaks, vouchers, leaderboard, 145 frontend + 220 backend tests
+
+### What Was Delivered
+
+**Pre-flight fixes (Phase 1):**
+- 3.3a frontend committed (`2311a5e`, was uncommitted)
+- Frontend test count verified as 137 across 39 test files (Case TEST-A)
+- `reward_wallets` deduped from 5,656 → 18 (one per user)
+
+**Backend (Phase 2):**
+- `RewardWallet`, `RewardTransaction` extended with `last_submission_date`, `transaction_type`, `reference_type`, `reference_id`, `metadata`
+- `EcoStoreProduct.points_cost` column added
+- `rewards_service.py` — points engine + streak tracking + idempotent award transactions
+- `leaderboard_service.py` — week/month/all-time rankings with PII masking
+- 7 endpoints under `/api/v1/rewards/*`
+- Wiring: `weight_service.on_intake_weighed`, `pickup_service.on_pickup_completed`, `marketplace_service.on_order_completed` call rewards
+- 10 eco-products seeded (vouchers + impact certificate)
+- 10 new tests → 220 backend total
+
+**Frontend (Phase 2):**
+- `api/rewards.ts` — 6 functions
+- `/rewards` — balance hero, streak badge, voucher grid, transactions, redemptions
+- `/rewards/leaderboard` — week/month/all-time with rank badges
+- `WalletBadge` component in sidebar
+- +8 tests → 145 frontend total
+
+### Important Decisions
+
+1. **Award idempotency via (reference_type, reference_id, transaction_type) tuple.**
+   *Why:* `on_intake_weighed` might be called twice if weight is corrected. Transaction ledger must not double-credit. Unique constraint on the tuple plus `SELECT ... WHERE NOT EXISTS` pattern prevents duplicates.
+
+2. **Streak computed from `last_submission_date`, not from scanning all intakes.**
+   *Why:* O(1) update per weigh event. Scanning would be O(n) per check and break at scale. Wallet stores `streak_days` + `last_submission_date`; comparing to today/yesterday determines increment/reset. Milestones (7/14/30) award bonus only once via `lifetime_points` or transaction-type lookup.
+
+3. **Points economy: 10 pts/kg submitted, 50 pts/pickup, 5 pts/kg sold, streak bonuses 100/250/500.**
+   *Why:* 100kg batch = 1000 pts. Small voucher (notebook, 200 pts) reachable in 1-2 intakes. Bigger vouchers (compost bag, 500 pts) require sustained engagement. Encourages quality (verified weight drives points) without over-rewarding.
+
+4. **Voucher redemption decrements stock AND deducts points atomically.**
+   *Why:* Rollback on stock conflict. If two users race on last stock item, one wins, one gets 422. Points not deducted on failure.
+
+5. **Leaderboard masks PII (first initial + last name only).**
+   *Why:* Public leaderboard exposing full emails = privacy leak. `Ramesh Kumar` → `R. Kumar`. Users still recognize themselves. Optional: opt-in for full name display is a 3.3c enhancement.
+
+6. **Impact certificate (10 trees, 1000 pts) in voucher catalog.**
+   *Why:* Not all rewards need physical delivery. A digital "tree plantation certificate" adds narrative impact with zero logistics. Pitch-friendly.
+
+7. **No new npm packages.** Leaderboard is a table, vouchers are cards, transactions are a list — all Tailwind + existing components.
+
+8. **Rewards are wired into existing services, not duplicated.**
+   *Why:* If weight_service creates a ticket but doesn't award points, two code paths drift. Single source: every `on_*` trigger runs exactly once per state transition, hooked into the service that owns the transition.
+
+### Operating Notes
+
+- **Tuning points:** edit `EARN_RATES` in `rewards_service.py`. Redeploy. No data migration needed (existing transactions stay as-is).
+- **Adding a voucher:** insert into `eco_products` with `points_cost > 0`. Appears in `/rewards` immediately.
+- **Streak reset edge case:** if a user submits at 23:59 day 1 and 00:01 day 2 → streak counts as 2 (two calendar dates). This is intentional and matches Duolingo/GitHub streak semantics.
+- **Refunding points on order cancel:** not implemented. Cancelled eco orders keep points deducted. Future: `admin_adjust` can refund.
+- **Leaderboard performance:** with 5,656 → 18 wallets after dedup, sorting is trivial. If scaled to 10k+ users, add materialized view.
+- **Manual point adjustments:** `POST /rewards/admin/adjust` for demo/bug-fix scenarios. Logs to transaction ledger with `transaction_type="admin_adjust"`.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| tsc | 0 errors |
+| Frontend tests | 145 (was 137 after Phase 1 fix, +8) |
+| Backend tests | 220 (was 210, +10) |
+| Containers | 7/7 healthy |
+| No new npm/pip | PASS |
+| reward_wallets count | 18 (deduped from 5,656) |
+| eco_products count | 10 |
+| Points awarded on weigh | PASS |
+| Streak increments correctly | PASS |
+| Voucher redemption flow | PASS |
+| Leaderboard masks PII | PASS |
+
+### Deferred to 3.3c/4.0
+- Order cancellation refunds
+- Real product shipping/delivery tracking for physical vouchers
+- Email notifications on reward milestone
+- Admin dashboard for user moderation
+- Real Stripe integration
+
+### Reversal / Supersede
+- Fixes 3.3a uncommitted frontend (committed now).
+- Fixes wallet duplication from seed (deduped).
+- Adds rewards system on top of existing eco_products + wallets.
+
+---
+
 

@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 
@@ -7,7 +7,6 @@ import { MainLayout } from "@/layouts/MainLayout";
 import { HomePage } from "@/pages/HomePage";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { RegisterPage } from "@/features/auth/pages/RegisterPage";
-import { DashboardPlaceholderPage } from "@/pages/DashboardPlaceholderPage";
 import { SupplierOverviewPage } from "@/features/suppliers/pages/SupplierOverviewPage";
 import { SupplierBatchListPage } from "@/features/suppliers/pages/SupplierBatchListPage";
 import { SupplierBatchDetailPage } from "@/features/suppliers/pages/SupplierBatchDetailPage";
@@ -27,9 +26,7 @@ import { IntakeSuccessPage } from "@/features/suppliers/pages/IntakeSuccessPage"
 import { PickupSchedulerPage } from "@/features/pickups/PickupSchedulerPage";
 import { LiveTrackingPage } from "@/features/tracking/LiveTrackingPage";
 import { SorterIntakePage } from "@/features/sorting/SorterIntakePage";
-import { MarketplaceFeedPage } from "@/features/marketplace/MarketplaceFeedPage";
 import { EcoStorePage } from "@/features/products/EcoStorePage";
-import { GreenRewardsPage } from "@/features/rewards/GreenRewardsPage";
 import { RoleDashboardPage } from "@/features/analytics/RoleDashboardPage";
 import { AdminFleetPage } from "@/features/fleet/pages/AdminFleetPage";
 import { DriverTripPage } from "@/features/fleet/pages/DriverTripPage";
@@ -44,6 +41,8 @@ import SellerOrdersPage from "@/features/seller/pages/SellerOrdersPage";
 import SupplierAnalyticsPage from "@/features/analytics/pages/SupplierAnalyticsPage";
 import SellerAnalyticsPage from "@/features/analytics/pages/SellerAnalyticsPage";
 import AdminAnalyticsPage from "@/features/analytics/pages/AdminAnalyticsPage";
+import RewardsPage from "@/features/rewards/pages/RewardsPage";
+import LeaderboardPage from "@/features/rewards/pages/LeaderboardPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -366,10 +365,18 @@ export const App: React.FC = () => {
               }
             />
             <Route
+              path="/rewards/leaderboard"
+              element={
+                <RequireAuth>
+                  <LeaderboardPage />
+                </RequireAuth>
+              }
+            />
+            <Route
               path="/rewards"
               element={
                 <RequireAuth>
-                  <GreenRewardsPage />
+                  <RewardsPage />
                 </RequireAuth>
               }
             />
