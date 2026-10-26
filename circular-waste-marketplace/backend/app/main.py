@@ -305,7 +305,7 @@ def create_application() -> FastAPI:
     # ── Routers ───────────────────────────────────────────────────────────
     prefix = settings.api_v1_prefix
 
-    # ── Root Ping ─────────────────────────────────────────────────────────
+    # ── Root Ping & Version ───────────────────────────────────────────────
     @app.get("/", tags=["Root"], summary="Root service ping")
     async def root_ping() -> dict[str, str]:
         return {
@@ -314,6 +314,17 @@ def create_application() -> FastAPI:
             "environment": settings.app_env,
             "docs": "/docs",
             "health": "/health",
+        }
+
+    import os
+
+    @app.get("/version", tags=["Root"], summary="Service version metadata")
+    async def get_version() -> dict[str, str]:
+        return {
+            "app_name": settings.app_name,
+            "environment": settings.app_env,
+            "version": "1.0.0",
+            "git_sha": os.environ.get("GIT_SHA", "dev"),
         }
 
     app.include_router(health.router)                       # /health, /ready

@@ -1,3 +1,83 @@
+# ♻️ Circular Waste Marketplace
+
+> **End-to-end B2B waste-to-resource platform** connecting commercial waste generators, logistics fleets, sorting facilities, and industrial recyclers — with AI waste classification, live GPS fleet tracking, cryptographic chain-of-custody, and green rewards.
+
+![CI](https://img.shields.io/badge/tests-391%20passing-10b981)
+![Backend](https://img.shields.io/badge/FastAPI-228%20tests-009688)
+![Frontend](https://img.shields.io/badge/React%2018%20%2B%20TS-163%20tests-61dafb)
+![Docker](https://img.shields.io/badge/Docker-7%20services-2496ed)
+![License](https://img.shields.io/badge/license-MIT-slate)
+
+---
+
+## 🎯 The Problem
+
+India generates **62M tonnes of municipal waste/year** — 70% goes to landfill untreated because:
+1. **Generators** have no price discovery or pickup reliability
+2. **Recyclers** receive contaminated, ungraded feedstock
+3. **Regulators** have zero chain-of-custody visibility (EPR compliance fraud is rampant)
+
+## 💡 Our Solution
+
+A **4-role marketplace** where every kg of waste has a verifiable digital twin from pickup to purchase order:
+
+| Role | What they do | Key features |
+|---|---|---|
+| 🏭 **Supplier** (`GENERATOR`) | Submit waste batches, book pickups | AI photo classification, QR batch manifests, CO₂e tracking, green points wallet |
+| 🚛 **Driver** (`LOGISTICS`) | Execute pickup trips | Live GPS route map, stop-by-stop workflow, weighbridge ticket recording |
+| 🔬 **Sorter / Seller** (`RECYCLER`) | Grade waste → list on marketplace | Sorter console with AI assist, lot creation, bid management, order shipping |
+| 🛡️ **Admin** (`ADMIN`) | Platform governance | Live fleet map, user RBAC management, weight dispute resolution, platform analytics |
+
+---
+
+## ⚡ 60-Second Quickstart
+
+```bash
+git clone <repo-url> && cd circular-waste-marketplace
+cp .env.example .env
+echo "VITE_DEMO_MODE=true" >> .env
+docker compose up -d
+```
+
+Open **http://localhost:5173/login** → click any **🎬 Demo Account** button → explore.
+
+---
+
+## 📸 Screenshots
+
+> See [`docs/screenshots/`](docs/screenshots/README.md) for all 10 role walkthroughs.
+
+| Supplier Dashboard + AI Assessment | Live Fleet Map | B2B Marketplace |
+|---|---|---|
+| ![Supplier](docs/screenshots/02-supplier-dashboard.png) | ![Fleet](docs/screenshots/10-admin-analytics-fleet.png) | ![Marketplace](docs/screenshots/07-marketplace-b2b.png) |
+
+---
+
+## 🏗️ Architecture at a Glance
+
+See [`docs/architecture.md`](docs/architecture.md) for full Mermaid diagrams (system overview, ER model, sequence flows).
+
+- **Backend:** FastAPI + SQLAlchemy 2.0 async + PostgreSQL 15 + Redis 7 + Celery + MinIO (S3)
+- **AI Engine:** Image quality gate + 8-category classifier + dynamic pricing + biogas estimator
+- **Frontend:** React 18 + TypeScript + Vite + Tailwind + TanStack Query + Zustand + Leaflet
+- **Security:** Dual-secret JWT + refresh rotation + RBAC + slowapi rate limits + non-root containers
+- **Quality:** **228 backend tests + 163 frontend tests** (391 total), GitHub Actions CI/CD, 1-command VPS deploy
+
+---
+
+## 📚 Documentation Index
+
+| Doc | Purpose |
+|---|---|
+| [`docs/demo-script.md`](docs/demo-script.md) | **90-second live demo script** for judges |
+| [`docs/pitch-deck-outline.md`](docs/pitch-deck-outline.md) | 10-slide pitch deck structure |
+| [`docs/faq.md`](docs/faq.md) | 15 likely judge questions + answers |
+| [`docs/architecture.md`](docs/architecture.md) | System + ER + sequence diagrams |
+| [`docs/deploy.md`](docs/deploy.md) | 30-minute VPS deployment guide |
+| [`docs/operations.md`](docs/operations.md) | Backup, rollback, incident runbook |
+
+---
+
 # ♻️ Circular Waste & Resource Marketplace
 
 > **Production-grade AI-powered marketplace transforming municipal and industrial waste into certified circular feedstock.**
