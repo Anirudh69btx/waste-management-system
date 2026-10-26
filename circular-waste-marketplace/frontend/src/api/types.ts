@@ -305,3 +305,323 @@ export interface PickupListResponse {
   limit: number;
   offset: number;
 }
+
+// ─── Segment 3.1 Fleet & GPS types ───
+
+export interface VehicleRead {
+  id: string;
+  plate_number: string;
+  capacity_kg: number;
+  fuel_type: string;
+  status: string;
+  assigned_driver_user_id: string | null;
+  current_lat: number | null;
+  current_lng: number | null;
+  last_ping_at: string | null;
+  last_ping_source: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VehicleCreatePayload {
+  plate_number: string;
+  capacity_kg: number;
+  fuel_type?: "petrol" | "diesel" | "electric" | "cng" | "hybrid";
+  notes?: string;
+}
+
+export interface VehicleUpdatePayload {
+  capacity_kg?: number;
+  fuel_type?: "petrol" | "diesel" | "electric" | "cng" | "hybrid";
+  status?: "available" | "in_use" | "maintenance" | "inactive";
+  notes?: string;
+}
+
+export interface VehicleListResponse {
+  items: VehicleRead[];
+  total: number;
+}
+
+export interface TripStopRead {
+  id: string;
+  trip_id: string;
+  pickup_request_id: string;
+  sequence: number;
+  status: string;
+  arrived_at: string | null;
+  completed_at: string | null;
+  failure_reason: string | null;
+  notes: string | null;
+}
+
+export interface TripRead {
+  id: string;
+  vehicle_id: string;
+  driver_user_id: string;
+  status: string;
+  planned_distance_km: number | null;
+  actual_distance_km: number | null;
+  started_at: string | null;
+  ended_at: string | null;
+  total_weight_kg: number | null;
+  stops: TripStopRead[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TripListResponse {
+  items: TripRead[];
+  total: number;
+}
+
+export interface CreateTripStopInput {
+  pickup_request_id: string;
+  sequence: number;
+}
+
+export interface CreateTripPayload {
+  vehicle_id: string;
+  driver_user_id: string;
+  stops: CreateTripStopInput[];
+}
+
+export interface VehicleLocationRead {
+  vehicle_id: string;
+  plate_number: string;
+  lat: number | null;
+  lng: number | null;
+  speed_kmh: number | null;
+  heading: number | null;
+  recorded_at: string | null;
+  source: string | null;
+  is_simulated: boolean;
+}
+
+export interface GpsPingRead {
+  id: string;
+  vehicle_id: string;
+  trip_id: string | null;
+  lat: number;
+  lng: number;
+  speed_kmh: number | null;
+  heading: number | null;
+  source: string;
+  recorded_at: string;
+}
+
+export interface RecordPingPayload {
+  lat: number;
+  lng: number;
+  speed_kmh?: number;
+  heading?: number;
+  trip_id?: string;
+}
+
+export interface RouteSuggestionRequest {
+  vehicle_id: string;
+  max_stops?: number;
+}
+
+export interface RouteStopSuggestion {
+  pickup_request_id: string;
+  supplier_id: string;
+  supplier_name: string;
+  latitude: number;
+  longitude: number;
+  waste_stream: string;
+  declared_weight_kg: number;
+  sequence: number;
+  distance_from_prev_km: number;
+}
+
+export interface RouteSuggestionResponse {
+  vehicle_id: string;
+  total_distance_km: number;
+  total_weight_kg: number;
+  waste_stream: string;
+  suggested_stops: RouteStopSuggestion[];
+}
+
+// ─── Segment 3.2 types ───
+
+export interface SortingRecordRead {
+  id: string;
+  intake_id: string;
+  sorter_user_id: string;
+  input_weight_kg: number;
+  sorted_weight_kg: number;
+  rejected_weight_kg: number;
+  contamination_percent: number;
+  sort_grade: "GRADE_A" | "GRADE_B" | "GRADE_C";
+  moisture_percent: number | null;
+  notes: string | null;
+  photos: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InventoryLotRead {
+  id: string;
+  lot_code: string;
+  intake_id: string;
+  sorting_record_id: string;
+  category_id: number;
+  quantity_kg: number;
+  available_kg: number;
+  grade: "GRADE_A" | "GRADE_B" | "GRADE_C";
+  contamination_percent: number;
+  moisture_percent: number | null;
+  status: "available" | "reserved" | "sold" | "archived";
+  hub_location: string | null;
+  created_at: string;
+}
+
+export interface InventoryLotCreate {
+  category_id: number;
+  quantity_kg: number;
+  grade: "GRADE_A" | "GRADE_B" | "GRADE_C";
+  contamination_percent: number;
+  moisture_percent?: number | null;
+  hub_location?: string | null;
+}
+
+export interface SortingRecordCreate {
+  intake_id: string;
+  input_weight_kg: number;
+  sorted_weight_kg: number;
+  rejected_weight_kg: number;
+  contamination_percent: number;
+  sort_grade: "GRADE_A" | "GRADE_B" | "GRADE_C";
+  moisture_percent?: number | null;
+  notes?: string | null;
+  inventory_lots: InventoryLotCreate[];
+}
+
+export interface MarketplaceListingRead {
+  id: string;
+  seller_id: string;
+  category_id: number;
+  title: string;
+  description: string | null;
+  quantity_kg: number;
+  available_kg: number;
+  price_per_kg: number;
+  min_bid_kg: number;
+  purity_grade: "GRADE_A" | "GRADE_B" | "GRADE_C";
+  status: "active" | "sold" | "cancelled" | "expired";
+  inventory_lot_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ListingListResponse {
+  items: MarketplaceListingRead[];
+  total: number;
+}
+
+export interface BidCreate {
+  bid_price_per_kg: number;
+  quantity_kg: number;
+  message?: string | null;
+}
+
+export interface BidRead {
+  id: string;
+  listing_id: string;
+  buyer_user_id: string;
+  bid_price_per_kg: number;
+  quantity_kg: number;
+  total_amount: number;
+  message: string | null;
+  status: "pending" | "accepted" | "rejected" | "cancelled" | "expired";
+  created_at: string;
+}
+
+export interface BuyNowRequest {
+  quantity_kg: number;
+}
+
+export interface PurchaseOrderRead {
+  id: string;
+  order_code: string;
+  listing_id: string;
+  buyer_user_id: string;
+  seller_user_id: string;
+  quantity_kg: number;
+  unit_price: number;
+  total_amount: number;
+  currency: string;
+  status: "pending_payment" | "escrow_held" | "confirmed" | "shipped" | "delivered" | "completed" | "cancelled" | "refunded";
+  escrow_held_at: string | null;
+  completed_at: string | null;
+  cancellation_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrderListResponse {
+  items: PurchaseOrderRead[];
+  total: number;
+}
+
+export interface TraceabilityEventRead {
+  id: string;
+  batch_id: string;
+  event_type: string;
+  from_status: string | null;
+  to_status: string | null;
+  actor_user_id: string | null;
+  actor_role: string | null;
+  metadata_json: Record<string, unknown>;
+  request_id: string | null;
+  created_at: string;
+}
+
+export interface TraceabilityTimelineResponse {
+  batch_id: string;
+  events: TraceabilityEventRead[];
+}
+
+// ─── Segment 3.2b types ───
+
+export interface BidActionRequest {
+  note?: string | null;
+}
+
+export interface OrderShipRequest {
+  tracking_number?: string | null;
+  note?: string | null;
+}
+
+export interface OrderDeliverRequest {
+  note?: string | null;
+}
+
+export interface ListingCancelRequest {
+  reason?: string | null;
+}
+
+export interface SellerInventoryStats {
+  total_lots: number;
+  total_available_kg: number;
+  total_listed_kg: number;
+  total_sold_kg: number;
+  active_listings: number;
+  pending_bids: number;
+  open_orders: number;
+}
+
+export interface TraceabilityEventDisplay extends TraceabilityEventRead {
+  human_label: string;
+  icon_name: string;
+}
+
+export interface CreateListingFromLotPayload {
+  inventory_lot_id: string;
+  title: string;
+  description?: string | null;
+  price_per_kg: number;
+  min_bid_kg: number;
+}
+

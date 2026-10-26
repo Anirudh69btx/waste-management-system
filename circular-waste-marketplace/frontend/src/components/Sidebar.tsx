@@ -12,6 +12,10 @@ import {
   Award,
   BarChart3,
   Settings,
+  Layers,
+  Tag,
+  Gavel,
+  Truck,
 } from "lucide-react";
 import { useAuthStore } from "@/features/auth/authStore";
 
@@ -46,16 +50,40 @@ export const Sidebar: React.FC = () => {
       roles: ["GENERATOR", "RECYCLER", "LOGISTICS", "ADMIN"],
     },
     {
-      to: "/sorting",
-      label: t("nav.sorting"),
+      to: "/sorter/console",
+      label: "Sorter Console",
       icon: CheckCircle2,
       roles: ["RECYCLER", "ADMIN"],
     },
     {
+      to: "/seller/inventory",
+      label: "My Inventory",
+      icon: Layers,
+      roles: ["RECYCLER", "ADMIN"],
+    },
+    {
+      to: "/seller/listings",
+      label: "My Listings",
+      icon: Tag,
+      roles: ["RECYCLER", "ADMIN"],
+    },
+    {
+      to: "/seller/bids",
+      label: "Bids Received",
+      icon: Gavel,
+      roles: ["RECYCLER", "ADMIN"],
+    },
+    {
+      to: "/seller/orders",
+      label: "Seller Orders",
+      icon: Truck,
+      roles: ["RECYCLER", "ADMIN"],
+    },
+    {
       to: "/marketplace",
-      label: t("nav.marketplace"),
+      label: "Marketplace",
       icon: ShoppingCart,
-      roles: ["GENERATOR", "RECYCLER", "ADMIN"],
+      roles: ["GENERATOR", "RECYCLER", "LOGISTICS", "ADMIN"],
     },
     {
       to: "/eco-store",

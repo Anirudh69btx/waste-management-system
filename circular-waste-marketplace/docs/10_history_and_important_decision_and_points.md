@@ -758,16 +758,19 @@ Deliver 8 endpoints + 2 models (PickupRequest, WeightTicket) + 20 tests, unblock
 **Backend (new):**
 - Models: Vehicle, Trip, TripStop, GpsPing
 - Migrations: 4 (vehicles, trips, trip_stops, gps_pings)
-- Schemas: 4 files (ehicle_schemas, 	rip_schemas, gps_schemas, oute_schemas)
+- Schemas: 4 files (ehicle_schemas, 	rip_schemas, gps_schemas, 
+oute_schemas)
 - Repositories: 4 files (VehicleRepository, TripRepository, TripStopRepository, GpsRepository) + IntakeRepository.get_by_ids extension
-- Services: leet_service, gps_service, oute_service, simulation_service
+- Services: leet_service, gps_service, 
+oute_service, simulation_service
 - Celery tasks: gps_simulation_tick (10s), gps_ping_cleanup (daily 3am)
 - Routers: 17 endpoints under /api/v1/fleet
 - waste_streams.py matrix + geo.py haversine
 - Reuses existing GET /api/v1/intake/scan/{batch_code} and POST /api/v1/intake/{id}/weight-ticket — no duplicate endpoints
 
 **Frontend (new):**
-- Packages: leaflet@^1.9.4, eact-leaflet@^4.2.1 (only new deps — approved exception)
+- Packages: leaflet@^1.9.4, 
+eact-leaflet@^4.2.1 (only new deps — approved exception)
 - LiveMap component (OSM tiles, custom icons, polylines, attribution)
 - AdminFleetPage (/admin/fleet) + TripCreateModal
 - DriverTripPage (/driver/trip) + DriverStopDetailModal
@@ -786,7 +789,8 @@ Deliver 8 endpoints + 2 models (PickupRequest, WeightTicket) + 20 tests, unblock
 9. **ctual_distance_km computed on trip end** (not live).
 10. **Map tiles via OSM public server for demo.** Production swaps to Mapbox/Google via env var.
 11. **Stop completion requires WeightTicket first** (422 "Record weight before completing stop.").
-12. **Only leaflet + eact-leaflet new npm packages.** No QR library (native BarcodeDetector + manual fallback). No new pip packages.
+12. **Only leaflet + 
+eact-leaflet new npm packages.** No QR library (native BarcodeDetector + manual fallback). No new pip packages.
 
 ### Verification
 
@@ -821,4 +825,191 @@ Deliver 8 endpoints + 2 models (PickupRequest, WeightTicket) + 20 tests, unblock
 
 - Deprecates PickupRequest.assigned_driver_user_id (retained for backward compat, removal in 3.2)
 - Overrides 2.2a's individual pickup assumption — trips can now group multiple pickups
-- Introduces leaflet + eact-leaflet as approved exception to "no new npm packages" rule (interactive maps have no viable zero-dep option)
+- Introduces leaflet + 
+eact-leaflet as approved exception to "no new npm packages" rule (interactive maps have no viable zero-dep option)
+
+---
+
+## Segment 3.2a — Sorter Console + Marketplace Browse (frontend)
+
+**Date:** 2026-10-25
+**Status:** ✅ COMPLETE — 111 frontend tests (was 93, +18)
+
+### Goal
+Deliver the sorter-facing and buyer-facing frontend for the 3.2 backend: sorter console to process weighed intakes into inventory lots, marketplace browse with filters, listing detail with bid/buy-now actions, buyer order list with payment confirmation. No backend changes.
+
+### What Was Delivered
+
+**API layer:**
+- `src/api/sorting.ts` — `processSorting`, `listSortingRecords`, `getSortingRecord`
+- `src/api/marketplace.ts` — `listListings`, `getListing`, `placeBid`, `buyNow`, `listMyOrders`, `confirmPayment`, `completeOrder`, `listInventoryLots`, `createListing`
+- `src/api/traceability.ts` — `getBatchTimeline`
+- 15 new interfaces in `src/api/types.ts`: `SortingRecordRead/Create`, `InventoryLotRead/Create`, `MarketplaceListingRead`, `ListingListResponse`, `BidCreate/Read`, `BuyNowRequest`, `PurchaseOrderRead`, `OrderListResponse`, `TraceabilityEventRead`, `TraceabilityTimelineResponse`
+
+**Sorter Console (`/sorter/console`):**
+- Lists weighed intakes waiting to be sorted (`listIntakes({ status: "weighed" })`)
+- Recent sorting records table (last 5)
+- Role-gated: RECYCLER + ADMIN only
+- "Sort now" opens `SortIntakeModal`
+
+**SortIntakeModal:**
+- Weight breakdown: input / sorted / rejected with `sorted + rejected <= input` validation
+- Quality: sort grade (A/B/C), contamination %, moisture %, notes
+- **Multi-lot creation**: each intake produces N inventory lots. Live running-sum check against `sorted_weight_kg`.
+- **Stream-compatibility gate**: lot categories disabled if not in the intake's stream class (DRY_RECYCLABLE / ORGANIC / HAZARDOUS_SPECIAL) — matches backend `waste_streams.py` matrix
+- Submit → `processSorting` → toast + refresh
+
+**Marketplace Browse (`/marketplace`):**
+- Card grid (3/2/1 responsive), category + grade badges, `available_kg / total_kg`, price per kg, seller initial avatar
+- Filters: category, grade, price range, sort order
+- Pagination
+
+**Listing Detail (`/marketplace/:id`):**
+- 2-column layout — details + action card
+- Action card: quantity input, live total, Buy Now, Place Bid
+- Seller cannot buy own listing (button hidden, `seller_id === user.id` check)
+- Sold/inactive listings: action buttons disabled
+- Bid minimum = 70% of asking (matches backend rule) — live hint shows "Minimum ₹X"
+
+**BuyNowModal + BidModal:**
+- Buy Now → `buyNow(listingId, { quantity_kg })` → redirect to `/marketplace/orders`
+- Bid → `placeBid` with price/quantity/message; validation on min price + available qty
+
+**MyOrdersPage (`/marketplace/orders`):**
+- `listMyOrders({ role: "buyer" })`
+- Status badges (pending_payment=grey, escrow_held=blue, completed=green, cancelled=red)
+- Actions: "Confirm payment" for `pending_payment`, "Mark received" for `escrow_held`
+
+**Routes added (4):**
+- `/sorter/console` (RECYCLER + ADMIN)
+- `/marketplace` (all authed)
+- `/marketplace/orders` (RECYCLER + ADMIN) — placed BEFORE `/marketplace/:id` in router
+- `/marketplace/:id` (all authed)
+
+### Important Decisions
+
+1. **Sorter workflow uses a modal, not a dedicated page.**
+   *Why:* One action per intake. Modal keeps the console list visible underneath. Fewer routes to maintain. When the sorter finishes, the row updates in place.
+
+2. **Multi-lot creation is where the sorting value lives.**
+   *Why:* One 100kg mixed intake produces 60kg plastic + 30kg paper + 10kg rejected, each with its own grade/contamination. The modal is the only place in the app where one input fans out to N outputs. Live sum validation prevents allocating more than the sorted weight.
+
+3. **Stream-compatibility enforced client-side AND server-side.**
+   *Why:* Backend already rejects cross-stream (3.2a backend commit `b0f21b8`). Frontend disables incompatible categories in the lot dropdown with tooltip. UX prevents the round-trip 422, backend catches bypass attempts. Defense in depth.
+
+4. **Bid minimum = 70% of asking price, shown live in modal.**
+   *Why:* Backend rejects bids below 70% (`marketplace_service.py`). Frontend shows "Minimum ₹X" so users know before submitting. Reduces failed bid attempts.
+
+5. **Seller-cannot-buy-own-listing is a UX gate, not a security gate.**
+   *Why:* Backend rejects self-bid in `place_bid` (422). Frontend hides the buttons when `user.id === listing.seller_id`. This is UX polish — the backend is the real control.
+
+6. **Route order matters: `/marketplace/orders` before `/marketplace/:id`.**
+   *Why:* React Router matches in declaration order. If `:id` comes first, navigating to `/marketplace/orders` treats "orders" as a listing ID → 404 from the listing fetch.
+
+7. **No new npm packages.**
+   *Why:* All UI needs (grid, badges, modals, pagination) are achievable with Tailwind + the existing Framer Motion + Lucide + TanStack Query stack. Native SVG for any charting in future segments.
+
+8. **Bid rejection/cancellation UI deferred to 3.2b.**
+   *Why:* Backend supports `status="cancelled"` but no UI control yet. Buyer-side cancellation flow is a seller-console feature (accept/reject bids), which is the next sub-segment. Ship the create-bid flow now, manage-bid flow in 3.2b.
+
+### Operating Notes (for future maintainers)
+
+- **Adding a new lot field:** update `InventoryLotCreate` in `types.ts`, add to `SortIntakeModal` lot row, backend schema update first (backend is source of truth).
+- **Bid minimum change:** 70% is defined in `marketplace_service.place_bid`. Frontend hardcodes `0.7` in `BidModal` — if backend changes, update both. Consider a `GET /marketplace/config` endpoint in 3.3 to fetch limits.
+- **Route ordering:** any new nested marketplace route (e.g., `/marketplace/favorites`) must be declared before `/marketplace/:id`.
+- **Order status flow:** `pending_payment → escrow_held → completed`. Payment confirmation is currently a mock endpoint (immediate `escrow_held`). Real Stripe/Razorpay integration is 3.3.
+- **Traceability API exists but not wired into any page yet.** `getBatchTimeline` is available for 3.2b's batch detail enhancement.
+- **`createListing` API function exists but no UI.** Seller console in 3.2b uses it to turn inventory lots into marketplace listings.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| tsc | 0 errors |
+| Frontend tests | 111 passed (was 93, +18) |
+| Backend unchanged | `git status` clean for `backend/` |
+| Containers | 7/7 healthy |
+| Forbidden patterns (`dangerouslySetInnerHTML`, `eval`, `new Function`) | 0 |
+| New npm packages | 0 |
+| Route order (`/marketplace/orders` before `/marketplace/:id`) | Correct |
+| Stream gate enforced client + server | PASS |
+| Bid min 70% enforced client + server | PASS |
+| Seller cannot buy own listing | PASS |
+
+### Open Questions / Deferred to 3.2b
+
+- **Seller inventory dashboard** (`/seller/inventory`) — RECYCLER acting as seller views their inventory lots
+- **Seller listings management** (`/seller/listings`) — create/edit/archive listings from lots (uses `createListing` API already delivered)
+- **Seller bids received** (`/seller/bids`) — accept/reject bids (backend `accept_bid` endpoint)
+- **Seller orders received** (`/seller/orders`) — fulfill orders, mark shipped/delivered
+- **Traceability timeline embed** — `getBatchTimeline` exists; needs UI component in `SupplierBatchDetailPage`
+- **Bid rejection/cancellation UI** — backend supports it; no UI yet
+- **Real escrow** — currently mock; Stripe integration is 3.3
+- **Listing expiry cron** — listings stay active indefinitely; 3.3 housekeeping
+- **Analytics per category** (sold weight, revenue, CO₂e saved) — 3.3
+
+### Reversal / Supersede
+
+- **No backend changes.** Extends 3.1 patterns (modal + table + card grid + role-guarded routes).
+- **Extends `SupplierBatchDetailPage` scope** — that page currently shows supplier's intake view only; sorter console is a separate entry point for the same intake object. Future consolidation: `SupplierBatchDetailPage` and sorter/seller detail views may share a common "batch overview" component in 3.3.
+
+---
+
+## Segment 3.2b — Seller Dashboard + Traceability Timeline
+
+**Date:** 2026-10-26
+**Status:** ✅ COMPLETE — 202 backend tests (was 192, +10), 125 frontend tests (was 111, +14)
+
+### Goal
+Deliver seller-facing marketplace workflows (inventory lot inspection, listing creation modal, listings management with cancellation, bid review with accept/reject, order fulfillment with shipment) and the consignment traceability timeline embedded in batch & listing detail pages. Minimal conditional backend additions for seller operations and traceability event emission.
+
+### What Was Delivered
+
+**Backend API additions (committed in 65020c7):**
+- `GET /inventory/lots` & `GET /inventory/lots/{id}` — seller inventory endpoint (RECYCLER/ADMIN), with category/grade/status filters and auto-calculated metrics
+- `PATCH /listings/{id}` — cancel listing with listing.cancelled traceability event
+- `POST /listings/{id}/bids/{bid_id}/reject` — reject bid with bid.rejected traceability event
+- `PATCH /orders/{id}/ship` — fulfill order by recording tracking details and carrier, status -> shipped, order.shipped traceability event
+- `PATCH /orders/{id}/deliver` — mark order delivered, status -> delivered, order.delivered traceability event
+- `POST /orders/{id}/complete` — updated to allow transition from `delivered` or `escrow_held`
+- `GET /traceability/batch/{batch_id}` — convenience alias for batch journey
+- 10 new backend tests in `test_marketplace_3_2b.py` (202 passed)
+
+**Frontend API & Types:**
+- `src/api/types.ts` — extended with `BidActionRequest`, `OrderShipRequest`, `OrderDeliverRequest`, `ListingCancelRequest`, `SellerInventoryStats`, `TraceabilityEventDisplay`, `CreateListingFromLotPayload`
+- `src/api/seller.ts` — complete seller API client (`getSellerInventoryStats`, `getSellerInventoryLots`, `getSellerListings`, `cancelListing`, `getSellerBids`, `rejectBid`, `getSellerOrders`, `shipOrder`, `deliverOrder`)
+- `src/api/traceability.ts` — extended with `mapEventToDisplay` helper for icons, badges, and readable event descriptions
+
+**Frontend Components & Pages:**
+- `TraceabilityTimeline.tsx` — interactive, animated timeline with status badges, actor info, metadata chips, expandable JSON details, and compact mode for sidebars
+- Embedded `TraceabilityTimeline` in `SupplierBatchDetailPage` (`Batch Journey`) and `ListingDetailPage` (compact mode)
+- `SellerInventoryPage.tsx` (`/seller/inventory`) — inventory metrics overview, filterable lot table, "Create Listing" action
+- `CreateListingModal.tsx` — creates marketplace listing directly from an inventory lot with price calculation, grade pre-selection, and unit pricing
+- `SellerListingsPage.tsx` (`/seller/listings`) — grid of seller listings, active/sold metrics, cancel listing confirmation modal
+- `SellerBidsPage.tsx` (`/seller/bids`) — received bids grouped by listing, accept & reject modals with custom seller notes
+- `SellerOrdersPage.tsx` (`/seller/orders`) — seller orders table with tracking number modal for shipping fulfillment
+- Role-guarded routes in `App.tsx` and sidebar navigation items in `Sidebar.tsx` for RECYCLER and ADMIN roles
+
+**Frontend Tests (14 new tests, 125 total passing across 33 test suites):**
+- `TraceabilityTimeline.test.tsx` (3 tests)
+- `SellerInventoryPage.test.tsx` (3 tests)
+- `CreateListingModal.test.tsx` (2 tests)
+- `SellerListingsPage.test.tsx` (2 tests)
+- `SellerBidsPage.test.tsx` (2 tests)
+- `SellerOrdersPage.test.tsx` (2 tests)
+
+### Verification
+
+| Check | Result |
+|---|---|
+| tsc | 0 errors |
+| Frontend tests | 125 passed (was 111, +14) |
+| Backend tests | 202 passed (was 192, +10) |
+| Vite build | Production build clean (dist/ generated) |
+| Forbidden patterns (`dangerouslySetInnerHTML`, `eval`, `new Function`) | 0 |
+| New npm packages | 0 |
+| Containers | Healthy |
+| Role guards | RECYCLER + ADMIN on all /seller/* routes |
+
+---
+

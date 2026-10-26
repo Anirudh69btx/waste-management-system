@@ -8,6 +8,10 @@ import { HomePage } from "@/pages/HomePage";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { RegisterPage } from "@/features/auth/pages/RegisterPage";
 import { DashboardPlaceholderPage } from "@/pages/DashboardPlaceholderPage";
+import { SupplierOverviewPage } from "@/features/suppliers/pages/SupplierOverviewPage";
+import { SupplierBatchListPage } from "@/features/suppliers/pages/SupplierBatchListPage";
+import { SupplierBatchDetailPage } from "@/features/suppliers/pages/SupplierBatchDetailPage";
+import { SupplierCategoryGuidePage } from "@/features/suppliers/pages/SupplierCategoryGuidePage";
 import { AdminOnlyPage } from "@/pages/AdminOnlyPage";
 import { ForbiddenPage } from "@/pages/ForbiddenPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
@@ -27,6 +31,16 @@ import { MarketplaceFeedPage } from "@/features/marketplace/MarketplaceFeedPage"
 import { EcoStorePage } from "@/features/products/EcoStorePage";
 import { GreenRewardsPage } from "@/features/rewards/GreenRewardsPage";
 import { RoleDashboardPage } from "@/features/analytics/RoleDashboardPage";
+import { AdminFleetPage } from "@/features/fleet/pages/AdminFleetPage";
+import { DriverTripPage } from "@/features/fleet/pages/DriverTripPage";
+import { SorterConsolePage } from "@/features/sorting/pages/SorterConsolePage";
+import { MarketplacePage } from "@/features/marketplace/pages/MarketplacePage";
+import { MyOrdersPage } from "@/features/marketplace/pages/MyOrdersPage";
+import { ListingDetailPage } from "@/features/marketplace/pages/ListingDetailPage";
+import SellerInventoryPage from "@/features/seller/pages/SellerInventoryPage";
+import SellerListingsPage from "@/features/seller/pages/SellerListingsPage";
+import SellerBidsPage from "@/features/seller/pages/SellerBidsPage";
+import SellerOrdersPage from "@/features/seller/pages/SellerOrdersPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -108,11 +122,50 @@ export const App: React.FC = () => {
             <Route path="/" element={<HomePage />} />
 
             {/* Protected dashboard route */}
+            {/* Client-side guards are UX only. Backend RBAC is the real control. */}
             <Route
               path="/dashboard"
               element={
                 <RequireAuth>
-                  <DashboardPlaceholderPage />
+                  <RequireRole roles={["GENERATOR", "ADMIN"]}>
+                    <SupplierOverviewPage />
+                  </RequireRole>
+                </RequireAuth>
+              }
+            />
+
+            {/* Client-side guards are UX only. Backend RBAC is the real control. */}
+            <Route
+              path="/dashboard/batches"
+              element={
+                <RequireAuth>
+                  <RequireRole roles={["GENERATOR", "ADMIN"]}>
+                    <SupplierBatchListPage />
+                  </RequireRole>
+                </RequireAuth>
+              }
+            />
+
+            {/* Client-side guards are UX only. Backend RBAC is the real control. */}
+            <Route
+              path="/dashboard/batches/:id"
+              element={
+                <RequireAuth>
+                  <RequireRole roles={["GENERATOR", "ADMIN"]}>
+                    <SupplierBatchDetailPage />
+                  </RequireRole>
+                </RequireAuth>
+              }
+            />
+
+            {/* Client-side guards are UX only. Backend RBAC is the real control. */}
+            <Route
+              path="/dashboard/guide"
+              element={
+                <RequireAuth>
+                  <RequireRole roles={["GENERATOR", "ADMIN"]}>
+                    <SupplierCategoryGuidePage />
+                  </RequireRole>
                 </RequireAuth>
               }
             />
@@ -124,6 +177,28 @@ export const App: React.FC = () => {
                 <RequireAuth>
                   <RequireRole roles={["ADMIN"]}>
                     <AdminOnlyPage />
+                  </RequireRole>
+                </RequireAuth>
+              }
+            />
+
+            {/* Segment 3.1: Fleet & Live Map routes */}
+            <Route
+              path="/admin/fleet"
+              element={
+                <RequireAuth>
+                  <RequireRole roles={["ADMIN"]}>
+                    <AdminFleetPage />
+                  </RequireRole>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/driver/trip"
+              element={
+                <RequireAuth>
+                  <RequireRole roles={["LOGISTICS", "ADMIN"]}>
+                    <DriverTripPage />
                   </RequireRole>
                 </RequireAuth>
               }
@@ -172,11 +247,80 @@ export const App: React.FC = () => {
                 </RequireAuth>
               }
             />
+            {/* Segment 3.2: Sorter Console & Marketplace */}
+            <Route
+              path="/sorter/console"
+              element={
+                <RequireAuth>
+                  <RequireRole roles={["RECYCLER", "ADMIN"]}>
+                    <SorterConsolePage />
+                  </RequireRole>
+                </RequireAuth>
+              }
+            />
             <Route
               path="/marketplace"
               element={
                 <RequireAuth>
-                  <MarketplaceFeedPage />
+                  <MarketplacePage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/marketplace/orders"
+              element={
+                <RequireAuth>
+                  <RequireRole roles={["RECYCLER", "ADMIN"]}>
+                    <MyOrdersPage />
+                  </RequireRole>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/marketplace/:id"
+              element={
+                <RequireAuth>
+                  <ListingDetailPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/seller/inventory"
+              element={
+                <RequireAuth>
+                  <RequireRole roles={["RECYCLER", "ADMIN"]}>
+                    <SellerInventoryPage />
+                  </RequireRole>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/seller/listings"
+              element={
+                <RequireAuth>
+                  <RequireRole roles={["RECYCLER", "ADMIN"]}>
+                    <SellerListingsPage />
+                  </RequireRole>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/seller/bids"
+              element={
+                <RequireAuth>
+                  <RequireRole roles={["RECYCLER", "ADMIN"]}>
+                    <SellerBidsPage />
+                  </RequireRole>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/seller/orders"
+              element={
+                <RequireAuth>
+                  <RequireRole roles={["RECYCLER", "ADMIN"]}>
+                    <SellerOrdersPage />
+                  </RequireRole>
                 </RequireAuth>
               }
             />
