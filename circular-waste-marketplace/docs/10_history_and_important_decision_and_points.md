@@ -1013,3 +1013,103 @@ Deliver seller-facing marketplace workflows (inventory lot inspection, listing c
 
 ---
 
+## Segment 3.3a — Analytics Dashboards
+
+**Date:** 2026-10-26
+**Status:** ✅ COMPLETE — supplier/seller/admin analytics, native SVG charts, 137 frontend + 210 backend tests
+
+### Delivered
+
+**Backend:**
+- `analytics_repository.py` — 17 SQL aggregation functions (async, parameterized)
+- `analytics_service.py` — 3 role-gated methods
+- `analytics.py` router — 3 endpoints (`/analytics/supplier|seller|admin`)
+- `analytics_schemas.py` — 4 response schemas
+- `seed_analytics.py` — idempotent 90-day historical seed (dev-only, marker-tagged)
+- 8 new tests → **210 total backend**
+
+**Frontend:**
+- 5 native SVG chart components: `StatCard`, `AnimatedCounter`, `LineChart`, `BarChart`, `DonutChart`
+- 2 shared analytics components: `PeriodSelector`, `AnalyticsPageShell`
+- `/dashboard/analytics` — supplier view (4 cards, kg-by-day area, status donut, category bars, impact stats)
+- `/seller/analytics` — seller view (revenue card, revenue-by-day, order donut, kg-by-category, ops summary)
+- `/admin/analytics` — **hero page** with giant animated CO₂e counter, kg diverted, GMV, households served; trend charts, distributions, top suppliers/sellers leaderboards, quick links
+- Sidebar updated: "Analytics" in supplier section, "Analytics" in seller section, "Platform Analytics" in admin section
+- 12 new tests → **137 total frontend**
+
+### Important Decisions
+
+1. **Native SVG charts, no recharts/chart.js.**
+   *Why:* Chart libraries add 200-500KB to bundle and lock design. Native SVG (`<path>`, `<circle>`, `<rect>`) gives full control, zero dependencies, animates smoothly. `<title>` inside SVG shapes gives native hover tooltips. All 5 charts total ~400 lines.
+
+2. **Backend SQL aggregation, not frontend rollup.**
+   *Why:* Frontend would need to fetch every intake/order row and aggregate client-side — O(n) network + O(n) memory. With 2500 intakes and 1200 orders from the seed, that's ~5MB JSON per page load. Backend aggregations return ~2KB. Also correct-by-construction (SQL `group by` never lies about sums).
+
+3. **Default period: last 30 days.**
+   *Why:* Matches common dashboard conventions. Weekly is too sparse (charts look empty), quarterly hides recent activity. 30 days shows trend + magnitude. Period selector lets user jump to 7d/90d.
+
+4. **CO₂e uses `verified_weight_kg`, not `declared_weight_kg`.**
+   *Why:* Declared is supplier's guess. Verified is physical measurement at pickup. Only verified kg is "actually diverted". Admin/supplier dashboards claim real impact, so use verified.
+
+5. **`total_households_served` = distinct suppliers with ≥1 verified intake.**
+   *Why:* Not distinct users (multiple users per supplier org). Not total intakes (that's batches, not entities). Distinct suppliers with completed transactions is the honest metric for pitch ("X households and businesses served").
+
+6. **90-day seed spread with realistic status distribution.**
+   *Why:* Empty charts during demo are death. Seeded 60% completed, 20% weighed, 10% picked_up, 5% cancelled reflects real product mix. 90 days lets "90d" period toggle show meaningful data.
+
+7. **Seed script refuses to run in `APP_ENV=production`.**
+   *Why:* Seed data is fake. Shipping it to prod corrupts analytics forever. Hard guard: `sys.exit` if production. Also idempotent (skips existing seeded rows) + `--reset` flag for dev cleanup.
+
+8. **Admin analytics is the "hero" page.**
+   *Why:* Judges/investors want 3-second comprehension of impact. Giant animated counters (CO₂e saved, kg diverted, ₹ GMV, households) at the top are the pitch. Everything below is supporting evidence.
+
+9. **Route order: `/dashboard/analytics` doesn't conflict with `/dashboard/batches/:id`.**
+   *Why:* Verified in Section M before writing. Different path segments — no collision. Only `/marketplace/orders` vs `/marketplace/:id` needed special handling (from 3.2a).
+
+10. **No LOGISTICS analytics page.**
+    *Why:* Drivers don't do analytics — they do trips. A trip stats page (km driven, hours active, pickups completed) is a Segment 3.3b concern. This segment focuses on the three money/impact views.
+
+### Operating Notes
+
+- **Adding a metric:** extend `Supplier/Seller/AdminAnalyticsResponse` schema → add repo function → wire in service → add chart on frontend. New metric appears immediately.
+- **Changing seed volume:** edit ranges in `seed_analytics.py`, run with `--reset`. Admin dashboard totals adjust on refresh.
+- **CO₂e factor tuning:** values in `waste_categories` table (per-category `carbon_offset_factor`). Update via SQL, all dashboards reflect immediately.
+- **Chart performance:** SVG charts render ~100 points max. For 90-day daily series (90 points), fine. For 365d (if added), downsample to weekly.
+- **GMV definition:** sum of orders in `[escrow_held, shipped, delivered, completed]` — excludes pending_payment (not yet money) and cancelled/refunded.
+- **Period selector default resets on page navigation** — no persistence. Fine for demo. Persist via URL query param in 3.3b if needed.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| tsc | 0 errors |
+| Frontend tests | 137 (was 125, +12) |
+| Backend tests | 210 (was 202, +8) |
+| Prod build | succeeds (`✓ built in 24.88s`) |
+| Containers | 7/7 healthy |
+| Forbidden patterns | grep=0 |
+| New npm packages | 0 |
+| Supplier analytics renders with data | PASS |
+| Seller analytics renders with data | PASS |
+| Admin hero counters animate | PASS |
+| Period toggle re-fetches | PASS |
+| Sidebar nav shows correct links per role | PASS |
+
+### Deferred to 3.3b/3.3c
+- Rewards system (points, streaks, vouchers, leaderboard)
+- Admin user management + moderation queue
+- Real Stripe/Razorpay escrow integration
+- Email/notification system
+- Trip stats analytics for LOGISTICS
+- Export CSV / PDF report for ESG compliance
+- Custom date range picker (currently preset periods only)
+- Real-time counters (currently on page load only)
+
+### Reversal / Supersede
+- No breaking changes to any prior route or component.
+- Adds 3 new routes, 5 chart components, 2 shared analytics shells.
+- Sidebar gets new "Analytics" links in 3 role sections.
+
+---
+
+

@@ -38,6 +38,12 @@ export const Sidebar: React.FC = () => {
       roles: ["GENERATOR", "ADMIN"],
     },
     {
+      to: "/dashboard/analytics",
+      label: "Analytics",
+      icon: BarChart3,
+      roles: ["GENERATOR"],
+    },
+    {
       to: "/pickups",
       label: t("nav.pickups"),
       icon: Calendar,
@@ -78,6 +84,18 @@ export const Sidebar: React.FC = () => {
       label: "Seller Orders",
       icon: Truck,
       roles: ["RECYCLER", "ADMIN"],
+    },
+    {
+      to: "/seller/analytics",
+      label: "Analytics",
+      icon: BarChart3,
+      roles: ["RECYCLER", "ADMIN"],
+    },
+    {
+      to: "/admin/analytics",
+      label: "Platform Analytics",
+      icon: BarChart3,
+      roles: ["ADMIN"],
     },
     {
       to: "/marketplace",

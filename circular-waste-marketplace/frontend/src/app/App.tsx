@@ -41,6 +41,9 @@ import SellerInventoryPage from "@/features/seller/pages/SellerInventoryPage";
 import SellerListingsPage from "@/features/seller/pages/SellerListingsPage";
 import SellerBidsPage from "@/features/seller/pages/SellerBidsPage";
 import SellerOrdersPage from "@/features/seller/pages/SellerOrdersPage";
+import SupplierAnalyticsPage from "@/features/analytics/pages/SupplierAnalyticsPage";
+import SellerAnalyticsPage from "@/features/analytics/pages/SellerAnalyticsPage";
+import AdminAnalyticsPage from "@/features/analytics/pages/AdminAnalyticsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -320,6 +323,36 @@ export const App: React.FC = () => {
                 <RequireAuth>
                   <RequireRole roles={["RECYCLER", "ADMIN"]}>
                     <SellerOrdersPage />
+                  </RequireRole>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/dashboard/analytics"
+              element={
+                <RequireAuth>
+                  <RequireRole roles={["GENERATOR"]}>
+                    <SupplierAnalyticsPage />
+                  </RequireRole>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/seller/analytics"
+              element={
+                <RequireAuth>
+                  <RequireRole roles={["RECYCLER", "ADMIN"]}>
+                    <SellerAnalyticsPage />
+                  </RequireRole>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/admin/analytics"
+              element={
+                <RequireAuth>
+                  <RequireRole roles={["ADMIN"]}>
+                    <AdminAnalyticsPage />
                   </RequireRole>
                 </RequireAuth>
               }

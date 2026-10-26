@@ -625,3 +625,80 @@ export interface CreateListingFromLotPayload {
   min_bid_kg: number;
 }
 
+// ─── Segment 3.3a types ───
+
+export interface TimeSeriesPoint {
+  date: string;
+  value: number;
+}
+
+export interface CategoryBreakdown {
+  category_id: number;
+  category_name: string;
+  quantity_kg: number;
+  count: number;
+}
+
+export interface StatusBreakdown {
+  status: string;
+  count: number;
+}
+
+export interface SupplierAnalytics {
+  period_start: string;
+  period_end: string;
+  total_batches: number;
+  total_declared_kg: number;
+  total_verified_kg: number;
+  total_estimated_earnings: number;
+  total_actual_earnings: number;
+  total_co2e_saved_kg: number;
+  avg_kg_per_batch: number;
+  rejection_rate: number;
+  submission_streak_days: number;
+  kg_by_day: TimeSeriesPoint[];
+  batches_by_status: StatusBreakdown[];
+  kg_by_category: CategoryBreakdown[];
+}
+
+export interface SellerAnalytics {
+  period_start: string;
+  period_end: string;
+  total_lots_created: number;
+  available_kg: number;
+  reserved_kg: number;
+  sold_kg: number;
+  total_revenue: number;
+  revenue_this_period: number;
+  avg_sale_price_per_kg: number;
+  bid_acceptance_rate: number;
+  pending_bids: number;
+  open_orders: number;
+  revenue_by_day: TimeSeriesPoint[];
+  kg_sold_by_category: CategoryBreakdown[];
+  orders_by_status: StatusBreakdown[];
+}
+
+export interface AdminAnalytics {
+  period_start: string;
+  period_end: string;
+  total_intakes: number;
+  total_kg_diverted: number;
+  total_co2e_saved_kg: number;
+  total_gmv: number;
+  active_users: number;
+  active_suppliers: number;
+  active_recyclers: number;
+  total_households_served: number;
+  kg_by_day: TimeSeriesPoint[];
+  gmv_by_day: TimeSeriesPoint[];
+  kg_by_category: CategoryBreakdown[];
+  users_by_role: StatusBreakdown[];
+  intakes_by_status: StatusBreakdown[];
+  top_suppliers: Array<{ id: string; name: string; kg: number }>;
+  top_sellers: Array<{ id: string; name: string; revenue: number }>;
+}
+
+export type AnalyticsPeriod = "7d" | "30d" | "90d";
+
+
