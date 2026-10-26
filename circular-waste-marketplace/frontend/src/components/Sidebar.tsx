@@ -170,15 +170,19 @@ export const Sidebar: React.FC = () => {
               to={item.to}
               end={item.to === "/rewards" || item.to === "/dashboard"}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${
                   isActive
-                    ? "bg-brand-600/20 text-brand-400 border border-brand-500/30 shadow-lg shadow-brand-500/10"
-                    : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/60"
+                    ? "border-l-[3px] border-l-brand-500 bg-brand-500/10 text-brand-400 border border-brand-500/30 shadow-lg shadow-brand-500/10"
+                    : "text-slate-400 hover:text-slate-100 hover:bg-white/5"
                 }`
               }
             >
-              <Icon className="h-4 w-4 shrink-0" />
-              <span>{item.label}</span>
+              {({ isActive }) => (
+                <>
+                  <Icon className="h-4 w-4 shrink-0" strokeWidth={isActive ? 2.4 : 1.8} />
+                  <span>{item.label}</span>
+                </>
+              )}
             </NavLink>
           );
         })}

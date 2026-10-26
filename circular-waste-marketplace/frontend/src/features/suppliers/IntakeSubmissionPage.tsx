@@ -13,6 +13,10 @@ import {
   Gift,
   ShoppingBag,
   Info,
+  Package,
+  FileText,
+  Camera,
+  Lightbulb,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -461,9 +465,12 @@ export const IntakeSubmissionPage: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* 1. Photo Upload Zone — now uses ImageUploader */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                1. Waste Evidence Photos
-              </label>
+              <div className="flex items-center gap-2 mb-2">
+                <Camera className="h-4 w-4 text-brand-400" />
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                  1. Waste Evidence Photos
+                </label>
+              </div>
               <ImageUploader
                 value={images}
                 onChange={setImages}
@@ -474,14 +481,17 @@ export const IntakeSubmissionPage: React.FC = () => {
             {/* 2. Material Category & Weight */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                  2. Material Category
-                </label>
+                <div className="flex items-center gap-2 mb-2">
+                  <Package className="h-4 w-4 text-brand-400" />
+                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                    2. Material Category
+                  </label>
+                </div>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   disabled={isSubmitting}
-                  className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-brand-500"
+                  className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 >
                   {CATEGORY_ENTRIES.map(([code, cat]) => (
                     <option key={code} value={code}>
@@ -492,9 +502,12 @@ export const IntakeSubmissionPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                  3. Declared Weight (kg)
-                </label>
+                <div className="flex items-center gap-2 mb-2">
+                  <Scale className="h-4 w-4 text-brand-400" />
+                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                    3. Declared Weight (kg)
+                  </label>
+                </div>
 
                 {/* Segregation instructions above weight input */}
                 {segregationInstructions.length > 0 && (
@@ -523,7 +536,7 @@ export const IntakeSubmissionPage: React.FC = () => {
                     value={weightKg}
                     onChange={(e) => setWeightKg(e.target.value)}
                     disabled={isSubmitting}
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-brand-500"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                   />
                 </div>
               </div>
@@ -718,9 +731,20 @@ export const IntakeSubmissionPage: React.FC = () => {
 
         {/* Right Col: Instant Valuation & Biogas Estimator (KEPT FROM ORIGINAL) */}
         <div className="space-y-6">
+          {/* Helpful Intake Guidance Hint */}
+          <div className="glass-card rounded-2xl p-5 border border-amber-500/20 bg-amber-950/10 space-y-2">
+            <div className="flex items-center gap-2 text-xs font-semibold text-amber-400 uppercase tracking-wider">
+              <Lightbulb className="h-4 w-4 text-amber-400" />
+              <span>Inspection Tip</span>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Clear photos showing top and side angles speed up ONNX AI assessment and reduce gate weight discrepancies during sorting.
+            </p>
+          </div>
+
           {/* Estimated payout card — sell mode only */}
           {mode === "sell" && (
-            <div className="glass-card rounded-2xl p-6 border border-white/10 space-y-4">
+            <div className={`glass-card rounded-2xl p-6 border border-white/10 space-y-4 ${pricingLoading ? "animate-pulse" : ""}`}>
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 <DollarSign className="h-4 w-4 text-emerald-400" />
                 <span>Real-Time Valuation Quote</span>

@@ -90,8 +90,8 @@ export const RewardsPage: React.FC = () => {
 
   return (
     <div className="space-y-8 pb-12">
-      {/* Hero Card */}
-      <section className="relative overflow-hidden rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-900/50 via-slate-900 to-slate-950 p-6 sm:p-8 shadow-xl">
+      {/* Hero Card with Radial Glow */}
+      <section className="relative overflow-hidden rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/70 via-slate-900 to-slate-950 p-6 sm:p-8 shadow-2xl before:absolute before:-top-24 before:-right-24 before:w-80 before:h-80 before:rounded-full before:bg-emerald-500/15 before:blur-3xl before:pointer-events-none">
         <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/15 border border-emerald-400/30 px-3 py-1 text-xs font-semibold text-emerald-300">
@@ -101,11 +101,11 @@ export const RewardsPage: React.FC = () => {
             <div className="flex items-baseline gap-3">
               <span
                 data-testid="wallet-points-balance"
-                className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white"
+                className="text-5xl sm:text-6xl font-bold tracking-tight text-emerald-400"
               >
                 <AnimatedCounter value={pointsBalance} />
               </span>
-              <span className="text-lg font-semibold text-emerald-400">pts available</span>
+              <span className="text-lg font-semibold text-emerald-300/80">pts available</span>
             </div>
             <p className="text-sm text-slate-300">
               Lifetime earned:{" "}
@@ -204,7 +204,7 @@ export const RewardsPage: React.FC = () => {
               <div
                 key={product.id}
                 data-testid={`voucher-card-${product.id}`}
-                className="flex flex-col justify-between rounded-2xl border border-slate-800 bg-slate-900/75 p-5 transition hover:border-emerald-500/40"
+                className="flex flex-col justify-between rounded-2xl border border-slate-800 bg-slate-900/75 p-5 transition-all duration-200 hover:border-emerald-500/40 hover:-translate-y-1 hover:shadow-lg hover:shadow-emerald-500/5"
               >
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between gap-2">

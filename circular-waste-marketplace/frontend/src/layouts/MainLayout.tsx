@@ -2,6 +2,7 @@ import React from "react";
 import { Outlet } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
+import { Footer } from "@/components/Footer";
 
 export const MainLayout: React.FC = () => {
   return (
@@ -13,9 +14,9 @@ export const MainLayout: React.FC = () => {
           <Outlet />
         </main>
       </div>
-      <footer className="border-t border-slate-900 bg-slate-950/80 py-6 text-center text-xs text-slate-400">
-        <p>Circular Waste Marketplace &copy; 2026 — Verified Industrial Feedstock & Renewable Material Platform</p>
-      </footer>
+      <Footer />
     </div>
   );
 };
+
+export default MainLayout;

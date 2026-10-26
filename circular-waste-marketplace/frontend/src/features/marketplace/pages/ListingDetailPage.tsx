@@ -236,14 +236,14 @@ export const ListingDetailPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Column (1/3) — Action Card */}
-        <div className="space-y-4">
+        {/* Right Column (1/3) — Action Card (Sticky) */}
+        <div className="space-y-4 lg:sticky lg:top-24">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 space-y-6 shadow-2xl backdrop-blur-md">
             {/* Price display */}
             <div>
               <span className="text-xs text-slate-400 font-medium">Asking Price</span>
               <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-3xl font-black text-white font-mono tracking-tight">
+                <span className="text-3xl font-bold text-brand-400 font-mono tracking-tight">
                   ₹{listing.price_per_kg}
                 </span>
                 <span className="text-sm text-slate-400 font-medium">/ kg</span>
@@ -309,7 +309,7 @@ export const ListingDetailPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setIsBuyModalOpen(true)}
-                    className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-brand-500 text-slate-950 font-bold text-sm hover:bg-brand-400 transition-all shadow-lg shadow-brand-500/20 active:scale-[0.99]"
+                    className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-brand-500 to-emerald-400 text-slate-950 font-bold text-sm hover:from-brand-400 hover:to-emerald-300 transition-all shadow-lg shadow-brand-500/20 active:scale-[0.99]"
                   >
                     <ShoppingCart className="h-4 w-4" />
                     <span>Buy Now (₹{listing.price_per_kg}/kg)</span>

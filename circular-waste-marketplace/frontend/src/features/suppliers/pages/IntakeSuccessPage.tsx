@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   CheckCircle2,
   Download,
@@ -7,6 +8,10 @@ import {
   ArrowLeft,
   UploadCloud,
   Loader2,
+  Truck,
+  Scale,
+  Layers,
+  ShoppingBag,
 } from "lucide-react";
 
 import { Button } from "@/components/Button";
@@ -78,6 +83,14 @@ export const IntakeSuccessPage: React.FC = () => {
     );
   }
 
+  const steps = [
+    { label: "Submitted", status: "complete", icon: CheckCircle2 },
+    { label: "Pickup scheduled", status: "upcoming", icon: Truck },
+    { label: "Weighed", status: "upcoming", icon: Scale },
+    { label: "Sorted", status: "upcoming", icon: Layers },
+    { label: "Listed", status: "upcoming", icon: ShoppingBag },
+  ];
+
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
       {/* Success card — visible on screen and print */}
@@ -85,9 +98,14 @@ export const IntakeSuccessPage: React.FC = () => {
         id="print-region"
         className="glass-card rounded-3xl p-8 border border-emerald-500/30 bg-emerald-950/20 text-center space-y-6 print:bg-white print:border-gray-300 print:text-black"
       >
-        <div className="inline-flex h-16 w-16 rounded-full bg-emerald-500/20 text-emerald-400 items-center justify-center print:bg-emerald-100">
+        <motion.div
+          initial={{ scale: 0.6, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          className="inline-flex h-16 w-16 rounded-full bg-emerald-500/20 text-emerald-400 items-center justify-center print:bg-emerald-100"
+        >
           <CheckCircle2 className="h-8 w-8" />
-        </div>
+        </motion.div>
 
         <div>
           <h2 className="text-xl font-bold text-white print:text-black">
@@ -99,6 +117,39 @@ export const IntakeSuccessPage: React.FC = () => {
               {intake.batch_code}
             </span>
           </p>
+        </div>
+
+        {/* What happens next mini-timeline */}
+        <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 text-left space-y-3 print:hidden">
+          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            Consignment Lifecycle
+          </div>
+          <div className="grid grid-cols-5 gap-1 pt-1">
+            {steps.map((st, idx) => {
+              const Icon = st.icon;
+              const isCurrent = idx === 0;
+              return (
+                <div key={st.label} className="flex flex-col items-center text-center space-y-1">
+                  <div
+                    className={`h-7 w-7 rounded-full flex items-center justify-center ${
+                      isCurrent
+                        ? "bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/30"
+                        : "bg-slate-800 text-slate-500 border border-slate-700"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                  </div>
+                  <span
+                    className={`text-[10px] leading-tight ${
+                      isCurrent ? "text-emerald-400 font-semibold" : "text-slate-400"
+                    }`}
+                  >
+                    {st.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Summary */}
@@ -136,7 +187,9 @@ export const IntakeSuccessPage: React.FC = () => {
         </div>
 
         {/* AI Assessment Card */}
-        <AIAssessmentCard intakeId={intakeId!} variant="full" />
+        <div className="text-left">
+          <AIAssessmentCard intakeId={intakeId!} variant="full" />
+        </div>
 
         {/* QR Code — direct base64 data URL, no blob */}
         <div className="flex flex-col items-center gap-3">
@@ -189,3 +242,5 @@ export const IntakeSuccessPage: React.FC = () => {
     </div>
   );
 };
+
+export default IntakeSuccessPage;

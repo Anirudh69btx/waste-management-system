@@ -215,6 +215,25 @@ export const MarketplacePage: React.FC = () => {
             </select>
           </div>
         </div>
+
+        {/* Clear Filters Button if any filter applied */}
+        {(selectedCategory !== "ALL" || selectedGrade !== "ALL" || minPrice !== "" || maxPrice !== "") && (
+          <div className="flex justify-end pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCategory("ALL");
+                setSelectedGrade("ALL");
+                setMinPrice("");
+                setMaxPrice("");
+                setPage(1);
+              }}
+              className="text-xs text-brand-400 hover:text-brand-300 underline font-medium"
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Grid Content */}
@@ -261,10 +280,12 @@ export const MarketplacePage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {processedListings.map((listing) => {
             const sellerInitial = listing.seller_id ? listing.seller_id.slice(0, 2).toUpperCase() : "SL";
+            const percentAvailable =
+              listing.quantity_kg > 0 ? (listing.available_kg / listing.quantity_kg) * 100 : 0;
             return (
               <div
                 key={listing.id}
-                className="group rounded-2xl border border-slate-800/90 bg-slate-900/60 hover:bg-slate-900 hover:border-slate-700 transition-all duration-200 p-5 flex flex-col justify-between shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-brand-500/5"
+                className="group rounded-2xl border border-slate-800/90 bg-slate-900/60 hover:bg-slate-900 hover:border-slate-700 transition-all duration-200 hover:-translate-y-1 p-5 flex flex-col justify-between shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-brand-500/5"
               >
                 <div className="space-y-4">
                   {/* Category + Grade Badge */}
@@ -294,8 +315,8 @@ export const MarketplacePage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Quantity Breakdown */}
-                  <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/60 space-y-1.5">
+                  {/* Quantity Breakdown with thin progress bar */}
+                  <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/60 space-y-2">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-slate-400 flex items-center gap-1.5">
                         <Scale className="h-3.5 w-3.5 text-slate-500" />
@@ -306,6 +327,14 @@ export const MarketplacePage: React.FC = () => {
                         {listing.quantity_kg.toFixed(1)} kg
                       </span>
                     </div>
+
+                    <div className="w-full bg-slate-800 rounded-full h-1 overflow-hidden">
+                      <div
+                        className="bg-emerald-400 h-1 rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min(100, Math.max(0, percentAvailable))}%` }}
+                      />
+                    </div>
+
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-slate-400">Min Bid Lot:</span>
                       <span className="font-mono text-slate-300">
@@ -316,7 +345,7 @@ export const MarketplacePage: React.FC = () => {
 
                   {/* Price */}
                   <div className="flex items-baseline gap-1 pt-1">
-                    <span className="text-2xl font-black tracking-tight text-white font-mono">
+                    <span className="text-2xl font-bold tracking-tight text-brand-400 font-mono">
                       ₹{listing.price_per_kg}
                     </span>
                     <span className="text-xs text-slate-400 font-medium">/ kg</span>

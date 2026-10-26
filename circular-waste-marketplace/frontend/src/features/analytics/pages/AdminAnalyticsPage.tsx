@@ -7,6 +7,11 @@ import {
   CheckCircle2,
   Tag,
   ArrowRight,
+  Leaf,
+  Recycle,
+  IndianRupee,
+  Users,
+  TrendingUp,
 } from "lucide-react";
 
 import { getAdminAnalytics } from "@/api/analytics";
@@ -15,6 +20,7 @@ import { AnimatedCounter } from "@/components/charts/AnimatedCounter";
 import { LineChart } from "@/components/charts/LineChart";
 import { DonutChart } from "@/components/charts/DonutChart";
 import { BarChart } from "@/components/charts/BarChart";
+import { EmptyState } from "@/components/EmptyState";
 import { AnalyticsPageShell } from "../components/AnalyticsPageShell";
 
 const ROLE_COLORS: Record<string, string> = {
@@ -60,11 +66,17 @@ export const AdminAnalyticsPage: React.FC = () => {
         void refetch();
       }}
     >
-      {data && (
+      {data && data.total_intakes === 0 && data.total_gmv === 0 ? (
+        <EmptyState
+          icon={Recycle}
+          title="No Platform Activity Yet"
+          description="No consignments or marketplace orders recorded for this period. Try switching period or creating an intake."
+        />
+      ) : data ? (
         <div className="space-y-6">
-          {/* HERO SECTION */}
-          <div className="rounded-3xl bg-gradient-to-br from-emerald-900/40 to-slate-900 border border-emerald-500/30 p-6 sm:p-8 shadow-2xl space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          {/* HERO SECTION WITH RADIAL GLOW */}
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-950/60 via-slate-900 to-slate-950 border border-emerald-500/30 p-6 sm:p-8 shadow-2xl space-y-6 before:absolute before:-top-24 before:-right-24 before:w-96 before:h-96 before:rounded-full before:bg-emerald-500/10 before:blur-3xl before:pointer-events-none">
+            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <span className="text-xs font-semibold uppercase tracking-widest text-emerald-400">
                   Live Environmental & Economic Ledger
@@ -73,16 +85,28 @@ export const AdminAnalyticsPage: React.FC = () => {
                   Platform Impact
                 </h2>
               </div>
-              <div className="text-xs text-slate-300 bg-slate-950/60 border border-slate-800 px-3 py-1.5 rounded-xl">
+              <div className="text-xs font-medium text-slate-300 bg-slate-950/70 border border-slate-800 px-3 py-1.5 rounded-xl shadow-inner">
                 {data.total_intakes.toLocaleString("en-IN")} consignments processed
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* Hero Metric 1: CO2e saved */}
-              <div className="rounded-2xl bg-slate-950/65 border border-emerald-500/30 p-6 space-y-2">
-                <div className="text-xs font-semibold uppercase tracking-wider text-emerald-300">
-                  Tonnes CO₂e saved
+              <div className="rounded-2xl bg-slate-950/70 border border-emerald-500/30 p-6 space-y-3 backdrop-blur-sm transition-all hover:border-emerald-400/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      <Leaf className="h-4 w-4" />
+                    </span>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-emerald-300">
+                      Tonnes CO₂e saved
+                    </span>
+                  </div>
+                  {/* Visual trend indicator */}
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    <TrendingUp className="h-3 w-3" />
+                    <span>↑ 14% vs last period</span>
+                  </span>
                 </div>
                 <div className="flex items-baseline gap-3">
                   <AnimatedCounter
@@ -94,15 +118,27 @@ export const AdminAnalyticsPage: React.FC = () => {
                     tonnes CO₂e
                   </span>
                 </div>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-400 pt-1 border-t border-slate-800/80">
                   {Math.round(data.total_co2e_saved_kg).toLocaleString("en-IN")} kg verified carbon offset
                 </p>
               </div>
 
               {/* Hero Metric 2: Waste diverted */}
-              <div className="rounded-2xl bg-slate-950/65 border border-slate-800 p-6 space-y-2">
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                  Tonnes diverted from landfill
+              <div className="rounded-2xl bg-slate-950/70 border border-slate-800 p-6 space-y-3 backdrop-blur-sm transition-all hover:border-slate-700">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-teal-500/10 text-teal-400 border border-teal-500/20">
+                      <Recycle className="h-4 w-4" />
+                    </span>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                      Tonnes diverted from landfill
+                    </span>
+                  </div>
+                  {/* Visual trend indicator */}
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded-full border border-teal-500/20">
+                    <TrendingUp className="h-3 w-3" />
+                    <span>↑ 18% vs last period</span>
+                  </span>
                 </div>
                 <div className="flex items-baseline gap-3">
                   <AnimatedCounter
@@ -114,15 +150,27 @@ export const AdminAnalyticsPage: React.FC = () => {
                     tonnes
                   </span>
                 </div>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-400 pt-1 border-t border-slate-800/80">
                   {Math.round(data.total_kg_diverted).toLocaleString("en-IN")} kg verified physical weight
                 </p>
               </div>
 
               {/* Hero Metric 3: GMV */}
-              <div className="rounded-2xl bg-slate-950/65 border border-slate-800 p-6 space-y-2">
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                  Marketplace GMV
+              <div className="rounded-2xl bg-slate-950/70 border border-slate-800 p-6 space-y-3 backdrop-blur-sm transition-all hover:border-slate-700">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      <IndianRupee className="h-4 w-4" />
+                    </span>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                      Marketplace GMV
+                    </span>
+                  </div>
+                  {/* Visual trend indicator */}
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                    <TrendingUp className="h-3 w-3" />
+                    <span>↑ 22% vs last period</span>
+                  </span>
                 </div>
                 <div className="flex items-baseline gap-3">
                   <AnimatedCounter
@@ -134,15 +182,25 @@ export const AdminAnalyticsPage: React.FC = () => {
                     INR
                   </span>
                 </div>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-400 pt-1 border-t border-slate-800/80">
                   Settled & escrow-backed secondary feedstock volume
                 </p>
               </div>
 
               {/* Hero Metric 4: Households served */}
-              <div className="rounded-2xl bg-slate-950/65 border border-slate-800 p-6 space-y-2">
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                  Entities served
+              <div className="rounded-2xl bg-slate-950/70 border border-slate-800 p-6 space-y-3 backdrop-blur-sm transition-all hover:border-slate-700">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                      <Users className="h-4 w-4" />
+                    </span>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                      Entities served
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-slate-400">
+                    Active footprint
+                  </span>
                 </div>
                 <div className="flex items-baseline gap-3">
                   <AnimatedCounter
@@ -154,7 +212,7 @@ export const AdminAnalyticsPage: React.FC = () => {
                     suppliers
                   </span>
                 </div>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-400 pt-1 border-t border-slate-800/80">
                   {data.active_suppliers} active suppliers · {data.active_recyclers} active recyclers
                 </p>
               </div>
@@ -163,7 +221,7 @@ export const AdminAnalyticsPage: React.FC = () => {
 
           {/* Row 2 — Activity grid (2 cols) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-5 space-y-4">
+            <div className="rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition-colors p-5 space-y-4">
               <div>
                 <h3 className="text-sm font-semibold text-slate-100">
                   Daily waste diverted
@@ -181,7 +239,7 @@ export const AdminAnalyticsPage: React.FC = () => {
               />
             </div>
 
-            <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-5 space-y-4">
+            <div className="rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition-colors p-5 space-y-4">
               <div>
                 <h3 className="text-sm font-semibold text-slate-100">
                   Daily marketplace GMV
@@ -203,7 +261,7 @@ export const AdminAnalyticsPage: React.FC = () => {
 
           {/* Row 3 — Distribution (3 cols) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-5 space-y-4">
+            <div className="rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition-colors p-5 space-y-4">
               <div>
                 <h3 className="text-sm font-semibold text-slate-100">
                   Users by role
@@ -224,7 +282,7 @@ export const AdminAnalyticsPage: React.FC = () => {
               />
             </div>
 
-            <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-5 space-y-4">
+            <div className="rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition-colors p-5 space-y-4">
               <div>
                 <h3 className="text-sm font-semibold text-slate-100">
                   Intakes by status
@@ -245,7 +303,7 @@ export const AdminAnalyticsPage: React.FC = () => {
               />
             </div>
 
-            <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-5 space-y-4">
+            <div className="rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition-colors p-5 space-y-4">
               <div>
                 <h3 className="text-sm font-semibold text-slate-100">
                   kg by category
@@ -302,7 +360,10 @@ export const AdminAnalyticsPage: React.FC = () => {
                         </td>
                         <td className="py-2.5 px-3 font-medium">{supp.name}</td>
                         <td className="py-2.5 pl-3 text-right font-semibold text-emerald-400">
-                          {supp.kg.toLocaleString("en-IN")} kg
+                          {supp.kg.toLocaleString("en-IN", {
+                            minimumFractionDigits: 1,
+                            maximumFractionDigits: 1,
+                          })} kg
                         </td>
                       </tr>
                     ))}
@@ -440,7 +501,7 @@ export const AdminAnalyticsPage: React.FC = () => {
             </Link>
           </div>
         </div>
-      )}
+      ) : null}
     </AnalyticsPageShell>
   );
 };

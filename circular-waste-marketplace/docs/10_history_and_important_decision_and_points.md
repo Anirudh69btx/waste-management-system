@@ -1537,3 +1537,48 @@ Backend AI (5 modules, Celery classifier, `GET /ai/assessments/{id}` endpoint) w
 
 
 
+
+---
+
+## Segment 5.4 — Demo Website Polish — 2026-10-26
+
+### Delivered
+- **Shared Base Components & Formatters:**
+  - `frontend/src/lib/format.ts`: `formatCurrency`, `formatWeight`, `formatNumber`, `formatDate`, `formatDateTime`, `formatRelativeTime`, `formatPercent`, `formatConfidence`, `initials`.
+  - `frontend/src/components/PageLoader.tsx`: Multi-block skeleton loader respecting `prefers-reduced-motion` with accessible status markup.
+  - `frontend/src/components/EmptyState.tsx`: Reusable empty state with custom/default icon, responsive compact/full layouts, and CTA action support.
+  - `frontend/src/components/ErrorState.tsx`: Graceful error boundary & query error state with optional Request ID tracking and retry buttons.
+  - `frontend/src/components/StatusBadge.tsx`: Centralized badge mapping for 30+ domain statuses across batches, listings, orders, trips, and purity grades.
+  - `frontend/src/components/PageTransition.tsx`: Smooth route fade/slide transitions via `framer-motion` respecting `useReducedMotion`.
+  - `frontend/src/components/Footer.tsx`: Universal platform footer with version pill, demo environment badge, architecture tags, and legal/documentation links.
+  - `frontend/src/components/ErrorBoundary.tsx`: React error boundary wrapping router routes with fallback recovery.
+- **Global Shell & Landing Polish:**
+  - `App.tsx`: Wrapped all application routes in `<ErrorBoundary>` and `<Suspense fallback={<PageLoader />}>`.
+  - `MainLayout.tsx`: Replaced hardcoded basic footer with centralized `<Footer />`.
+  - `Sidebar.tsx`: Active route brand left border (`border-l-[3px] border-l-brand-500 bg-brand-500/10`), hover transitions (`hover:bg-white/5 duration-150`), bolder active stroke width, and `focus-visible` accessibility rings.
+  - `NotFoundPage.tsx`: Large gradient 404 text, informative description, dual return buttons (Dashboard / Home), and broken link reporting link.
+  - `HomePage.tsx`: Hero visual redesign (`🌱 AI-powered circular economy` pill, 394 test proof strip, CTAs), 4-column animated counter impact stats, 3-card feature grid with hover lift, 4-step interactive flow diagrams, and demo CTA banner.
+- **Demo-Critical Surface Polish:**
+  - `AdminAnalyticsPage.tsx`: Radial emerald glow hero, metric icons (Leaf, Recycle, IndianRupee, Users), period trend indicator pills (`↑ 12% vs last period`), chart card hover borders, and EmptyState for inactive periods.
+  - `SupplierAnalyticsPage.tsx` & `SellerAnalyticsPage.tsx`: Hover-lift chart cards and interactive operations panels.
+  - `IntakeSubmissionPage.tsx`: Section header icons (`Camera`, `Package`, `Scale`, `FileText`), `focus:ring-2 focus:ring-brand-500` rings, inspector tip hint card, and live valuation quote pulse.
+  - `IntakeSuccessPage.tsx`: Spring-animated checkmark via `framer-motion`, 5-step consignment lifecycle mini-timeline (`Submitted` → `Pickup scheduled` → `Weighed` → `Sorted` → `Listed`), and white background QR display card.
+  - `SupplierBatchDetailPage.tsx`: Evidence photo hover-scaling, 3-col weight ticket layout, white background QR manifest card, and structured notes KV grid.
+  - `MarketplacePage.tsx` & `ListingDetailPage.tsx`: Card hover lifts (`hover:-translate-y-1`), stock availability percentage bar, sticky right summary action card (`lg:sticky lg:top-24`), and prominent gradient Buy Now buttons.
+  - `SorterConsolePage.tsx`: Centralized `<StatusBadge>` integration, table row hover highlights (`hover:bg-white/5`), and `<EmptyState>` empty queue handling.
+  - `RewardsPage.tsx`: Radial glow wallet hero, 6xl points balance, streak badge, and voucher card hover animations.
+
+### Important Decisions
+1. **Zero New Dependencies:** All icons use `lucide-react`, all transitions use `framer-motion`, all chart cards use native SVG. `package.json` diff is 0 lines.
+2. **Accessibility Guaranteed:** `prefers-reduced-motion` is honored in `PageTransition`, `PageLoader`, and `AnimatedCounter` to support motion-sensitive users.
+3. **Preserved All Existing Test Selectors:** Maintained all test assertions across 52 test files, ensuring 166/166 frontend tests and 228/228 backend tests remain 100% green.
+
+### Verification
+| Check | Result |
+|---|---|
+| `npx tsc --noEmit -p tsconfig.json` | PASS (0 errors) |
+| `npm test -- --run` | 166/166 passed (52 test suites) |
+| Backend diff | 0 files modified (`git diff backend/` empty) |
+| Package diff | 0 packages added (`git diff package.json` empty) |
+| Docker Containers | 7/7 healthy |
+| Total Suite Tests | **394 passed** (166 frontend + 228 backend) |

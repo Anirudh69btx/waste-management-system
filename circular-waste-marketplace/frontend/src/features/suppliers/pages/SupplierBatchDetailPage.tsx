@@ -497,7 +497,7 @@ export const SupplierBatchDetailPage: React.FC = () => {
                     <button
                       key={i}
                       onClick={() => setLightboxSrc(url)}
-                      className="aspect-square overflow-hidden rounded-xl border border-white/10 hover:border-brand-400 transition-colors"
+                      className="aspect-square overflow-hidden rounded-xl border border-white/10 hover:border-brand-400 hover:scale-105 transition-all duration-200"
                     >
                       <img
                         src={url}
@@ -589,11 +589,13 @@ export const SupplierBatchDetailPage: React.FC = () => {
                   Batch QR Code
                 </h3>
                 <div className="flex flex-col items-center gap-3">
-                  <img
-                    src={qrData.qr_code_data_url}
-                    alt="Batch QR"
-                    className="w-48 h-48 rounded-xl border border-white/10"
-                  />
+                  <div className="p-3 bg-white rounded-2xl shadow-xl">
+                    <img
+                      src={qrData.qr_code_data_url}
+                      alt="Batch QR"
+                      className="w-44 h-44"
+                    />
+                  </div>
                   <p className="font-mono text-xs text-slate-400">{qrData.batch_code}</p>
                 </div>
                 <div className="flex gap-2 print:hidden">

@@ -14,6 +14,8 @@ import { listIntakes } from "@/api/intakes";
 import { listSortingRecords } from "@/api/sorting";
 import type { WasteIntakeListItem, SortingRecordRead } from "@/api/types";
 import { WASTE_CATEGORY_MAP } from "@/constants/wasteCategories";
+import { StatusBadge } from "@/components/StatusBadge";
+import { EmptyState } from "@/components/EmptyState";
 // @ts-ignore - SortIntakeModal component created in Section F
 import { SortIntakeModal } from "../components/SortIntakeModal";
 
@@ -139,15 +141,11 @@ export const SorterConsolePage: React.FC = () => {
             <p className="text-xs text-rose-400/80 mt-1">Please try refreshing the page</p>
           </div>
         ) : intakes.length === 0 ? (
-          <div className="rounded-2xl border border-slate-800/80 bg-slate-900/40 p-12 text-center">
-            <div className="h-12 w-12 rounded-2xl bg-slate-800/80 border border-slate-700/50 flex items-center justify-center mx-auto mb-4 text-slate-400">
-              <CheckCircle2 className="h-6 w-6 text-brand-400" />
-            </div>
-            <h3 className="text-base font-semibold text-slate-200">No weighed intakes waiting</h3>
-            <p className="mt-2 text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-              Batch flow: supplier submits → driver picks up → weight recorded → sorter processes.
-            </p>
-          </div>
+          <EmptyState
+            icon={CheckCircle2}
+            title="No weighed intakes waiting"
+            description="Batch flow: supplier submits → driver picks up → weight recorded → sorter processes."
+          />
         ) : (
           <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 shadow-xl backdrop-blur-sm">
             <div className="overflow-x-auto">
@@ -167,7 +165,7 @@ export const SorterConsolePage: React.FC = () => {
                     <tr
                       key={intake.id}
                       onClick={() => handleOpenSort(intake)}
-                      className="cursor-pointer transition-colors hover:bg-slate-800/40 group"
+                      className="cursor-pointer transition-colors hover:bg-white/5 group"
                     >
                       <td className="px-6 py-4 font-mono font-medium text-white whitespace-nowrap">
                         <div className="flex items-center gap-2">
@@ -257,13 +255,7 @@ export const SorterConsolePage: React.FC = () => {
                         {rec.rejected_weight_kg.toFixed(1)} kg
                       </td>
                       <td className="px-5 py-3">
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${getGradeBadge(
-                            rec.sort_grade
-                          )}`}
-                        >
-                          {rec.sort_grade.replace("_", " ")}
-                        </span>
+                        <StatusBadge status={rec.sort_grade} />
                       </td>
                       <td className="px-5 py-3 text-slate-300">
                         {rec.contamination_percent}%

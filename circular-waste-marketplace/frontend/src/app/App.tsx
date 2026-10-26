@@ -1,8 +1,10 @@
-import React, { useEffect } from "react";
+import React, { useEffect, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { PageLoader } from "@/components/PageLoader";
 import { MainLayout } from "@/layouts/MainLayout";
 import { HomePage } from "@/pages/HomePage";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
@@ -98,8 +100,10 @@ export const App: React.FC = () => {
           }}
         />
 
-        <Routes>
-          {/* Public-only authentication routes */}
+        <ErrorBoundary>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              {/* Public-only authentication routes */}
           <Route
             path="/login"
             element={
@@ -435,7 +439,9 @@ export const App: React.FC = () => {
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>
-      </BrowserRouter>
+      </Suspense>
+    </ErrorBoundary>
+  </BrowserRouter>
     </QueryClientProvider>
   );
 };

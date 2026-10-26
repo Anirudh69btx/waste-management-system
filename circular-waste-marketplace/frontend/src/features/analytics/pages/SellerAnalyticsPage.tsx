@@ -104,7 +104,7 @@ export const SellerAnalyticsPage: React.FC = () => {
 
           {/* Row 2 — 2 columns (2/3 LineChart + 1/3 DonutChart) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 rounded-2xl bg-slate-900/80 border border-slate-800 p-5 space-y-4">
+            <div className="lg:col-span-2 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition-colors p-5 space-y-4">
               <div>
                 <h2 className="text-sm font-semibold text-slate-100">
                   Revenue by Day
@@ -122,7 +122,7 @@ export const SellerAnalyticsPage: React.FC = () => {
               />
             </div>
 
-            <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-5 flex flex-col justify-between space-y-4">
+            <div className="rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition-colors p-5 flex flex-col justify-between space-y-4">
               <div>
                 <h2 className="text-sm font-semibold text-slate-100">
                   Orders by Status
@@ -146,7 +146,7 @@ export const SellerAnalyticsPage: React.FC = () => {
 
           {/* Row 3 — 2 columns (BarChart + Operations card) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 rounded-2xl bg-slate-900/80 border border-slate-800 p-5 space-y-4">
+            <div className="lg:col-span-2 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition-colors p-5 space-y-4">
               <div>
                 <h2 className="text-sm font-semibold text-slate-100">
                   kg Sold by Category

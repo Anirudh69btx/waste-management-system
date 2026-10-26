@@ -1,37 +1,40 @@
 import React from "react";
-import { Recycle } from "lucide-react";
 
-interface PageLoaderProps {
+export interface PageLoaderProps {
   message?: string;
   fullScreen?: boolean;
 }
 
 export const PageLoader: React.FC<PageLoaderProps> = ({
-  message = "Loading platform session...",
+  message = "Loading...",
   fullScreen = true,
 }) => {
   const containerClasses = fullScreen
-    ? "fixed inset-0 z-50 flex flex-col items-center justify-center bg-bg-base/95 backdrop-blur-sm"
-    : "flex flex-col items-center justify-center p-8";
+    ? "fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-sm p-6"
+    : "flex flex-col items-center justify-center p-8 w-full";
 
   return (
-    <div className={containerClasses} role="status" aria-live="polite">
-      <div className="relative flex items-center justify-center">
-        {/* Outer glowing pulsing ring */}
-        <div className="h-16 w-16 rounded-full border-2 border-brand-500/30 animate-ping absolute" />
-        
-        {/* Spinning gradient ring */}
-        <div className="h-14 w-14 rounded-full border-2 border-transparent border-t-brand-400 border-r-brand-500 animate-spin" />
-        
-        {/* Center brand icon */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Recycle className="h-6 w-6 text-brand-400 animate-pulse" />
+    <div
+      className={containerClasses}
+      role="status"
+      aria-live="polite"
+      aria-label="Loading content"
+    >
+      <div className="w-full max-w-md space-y-4">
+        {/* 4 pulsing skeleton blocks respecting prefers-reduced-motion */}
+        <div className="h-8 w-1/3 rounded-xl bg-slate-800/80 animate-pulse motion-reduce:animate-none" />
+        <div className="h-24 w-full rounded-2xl bg-slate-800/60 animate-pulse motion-reduce:animate-none" />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="h-20 rounded-2xl bg-slate-800/50 animate-pulse motion-reduce:animate-none" />
+          <div className="h-20 rounded-2xl bg-slate-800/50 animate-pulse motion-reduce:animate-none" />
         </div>
+        <div className="h-16 w-full rounded-2xl bg-slate-800/40 animate-pulse motion-reduce:animate-none" />
       </div>
-      
-      <p className="mt-4 text-xs font-medium text-text-secondary tracking-wide uppercase">
+      <p className="mt-4 text-xs font-medium text-slate-400 tracking-wide">
         {message}
       </p>
     </div>
   );
 };
+
+export default PageLoader;
