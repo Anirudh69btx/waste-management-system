@@ -1,0 +1,60 @@
+name: Deploy
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_TAG: ${{ github.ref_name }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          target: production
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/cwm-backend:${{ env.IMAGE_TAG }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/cwm-backend:latest
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          target: production
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/cwm-frontend:${{ env.IMAGE_TAG }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/cwm-frontend:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /opt/cwm
+            git pull origin main
+            ./deploy/scripts/deploy.sh ${{ env.IMAGE_TAG }}
