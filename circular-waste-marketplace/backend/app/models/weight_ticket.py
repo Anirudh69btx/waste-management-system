@@ -100,6 +100,12 @@ class WeightTicket(Base, TimestampMixin):
         DateTime(timezone=True), nullable=True
     )
     supplier_dispute_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    dispute_resolution: Mapped[str | None] = mapped_column(String(32), nullable=True)  # upheld | rejected
+    dispute_resolved_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    dispute_resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    dispute_resolution_note: Mapped[str | None] = mapped_column(String(1000), nullable=True)
 
     # Relationships
     intake: Mapped["WasteIntake"] = relationship("WasteIntake", back_populates="weight_tickets")

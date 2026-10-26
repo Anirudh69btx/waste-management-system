@@ -57,5 +57,9 @@ class WeightTicketRead(_Base):
     notes: Optional[str] = None
     supplier_confirmed_at: Optional[datetime] = None
     supplier_dispute_notes: Optional[str] = None
+    dispute_resolution: Optional[str] = None
+    dispute_resolved_by_user_id: Optional[uuid.UUID] = None
+    dispute_resolved_at: Optional[datetime] = None
+    dispute_resolution_note: Optional[str] = None
     created_at: datetime
     updated_at: datetime

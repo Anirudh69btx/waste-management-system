@@ -52,6 +52,7 @@ from app.routers import (
     fleet,
     traceability,
     inventory,
+    admin,
 )
 
 settings = get_settings()
@@ -333,6 +334,7 @@ def create_application() -> FastAPI:
     app.include_router(fleet.router, prefix=prefix)         # /api/v1/fleet/...
     app.include_router(traceability.router, prefix=prefix)  # /api/v1/traceability/...
     app.include_router(inventory.router, prefix=prefix)     # /api/v1/inventory/...
+    app.include_router(admin.router, prefix=prefix)         # /api/v1/admin/...
 
     return app
 

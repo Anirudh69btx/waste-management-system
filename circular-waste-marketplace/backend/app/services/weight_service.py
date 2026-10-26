@@ -80,6 +80,10 @@ def _to_weight_read(t: WeightTicket) -> WeightTicketRead:
         notes=t.notes,
         supplier_confirmed_at=t.supplier_confirmed_at,
         supplier_dispute_notes=t.supplier_dispute_notes,
+        dispute_resolution=t.dispute_resolution,
+        dispute_resolved_by_user_id=t.dispute_resolved_by_user_id,
+        dispute_resolved_at=t.dispute_resolved_at,
+        dispute_resolution_note=t.dispute_resolution_note,
         created_at=t.created_at,
         updated_at=t.updated_at,
     )

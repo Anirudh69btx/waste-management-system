@@ -22,13 +22,17 @@ from app.routers import sorting
 from app.routers import marketplace
 from app.routers import traceability
 from app.routers import analytics
+from app.routers import admin
+from app.routers.admin import router as admin_router
 
 __all__ = [
     "fleet_router",
     "analytics_router",
+    "admin_router",
     "fleet",
     "sorting",
     "marketplace",
     "traceability",
     "analytics",
+    "admin",
 ]

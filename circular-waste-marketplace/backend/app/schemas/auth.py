@@ -162,6 +162,9 @@ class UserReadResponse(_BaseSchema):
     is_verified: bool
     last_login_at: Optional[datetime] = None
     created_at: datetime
+    deactivated_by_user_id: Optional[uuid.UUID] = None
+    deactivation_reason: Optional[str] = None
+    last_role_change_at: Optional[datetime] = None
 
 
 # Alias for backward compatibility
