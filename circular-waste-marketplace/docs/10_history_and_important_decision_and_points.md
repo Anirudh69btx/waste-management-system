@@ -1300,4 +1300,104 @@ Deliver seller-facing marketplace workflows (inventory lot inspection, listing c
 
 ---
 
+## Segment 3.3c — Admin Dashboard
+
+**Date:** 2026-10-26
+**Status:** ✅ COMPLETE — user management, dispute resolution, activity feed, 155 frontend + 228 backend tests
+
+### What Was Delivered
+
+**Backend (Commit 1):**
+- `User` extended: `last_role_change_by_user_id`, `last_role_change_at`, `deactivated_by_user_id`, `deactivation_reason`
+- `WeightTicket` extended: `dispute_resolution`, `dispute_resolved_by_user_id`, `dispute_resolved_at`, `dispute_resolution_note`
+- Migration `3302_admin_dashboard.py` (8 new columns, all nullable)
+- `admin_repository.py` — user list/filter, dispute list/filter, activity feed queries
+- `admin_service.py` — 6 methods, all role-gated, with audit column writes
+- `admin.py` router — 6 endpoints
+- Safeguards: cannot change own role, cannot deactivate last active ADMIN, cannot resolve already-resolved dispute
+- 8 new tests → 228 backend
+
+**Frontend (Commit 2):**
+- `api/admin.ts` — 6 functions
+- 8 new types in `types.ts`
+- `/admin/users` — searchable, filterable user table with role-change + deactivate modals
+- `/admin/disputes` — pending/upheld/rejected tabs + resolve modal
+- `/admin/activity` — traceability event feed, day-grouped, 30s auto-refresh
+- 3 modals: `RoleChangeModal`, `DeactivateModal`, `ResolveDisputeModal`
+- Sidebar: 3 new links in admin section
+- 10 new tests → 155 frontend
+
+### Important Decisions
+
+1. **Audit columns, not separate audit log table.**
+   *Why:* Adding `admin_audit_log` table would be another migration + service + retention policy. Column-based audit (`last_role_change_by_user_id`, `dispute_resolved_by_user_id`) covers "who did what, when" for the 3 admin actions. A separate table is future 4.1 scope if admin actions proliferate.
+
+2. **Cannot change own role.**
+   *Why:* Admin promotes themselves to... ADMIN (no-op). Admin demotes themselves to GENERATOR → locked out, other admins (if any) must fix. Prevents accidental self-lockout. 422 with "Cannot change your own role."
+
+3. **Cannot deactivate last active admin.**
+   *Why:* Same reason — if the only admin deactivates themselves, no one can reactivate. Service counts active admins before allowing deactivation. If count == 1 and target is that admin → 422.
+
+4. **Dispute resolution is final (no undo).**
+   *Why:* Disputes settle money (verified weight drives pricing). Reversing a resolution after payment is complex. Keep it simple: resolution is irreversible, admin can manually adjust weight later if genuinely wrong (rare). Warning shown in modal.
+
+5. **Activity feed auto-refreshes every 30s.**
+   *Why:* Real-time streaming via WebSocket would be ideal but adds complexity. Polling every 30s for an admin-monitoring page is fine — admin can manually refresh if urgent. Reduces server load vs 5s polling.
+
+6. **Activity feed shows traceability_events, not admin_actions.**
+   *Why:* Traceability events cover batch lifecycle (submitted → weighed → sorted → listed → sold). Admin action audit is column-based (see above). Merging both into one feed would need UNION + type coercion — deferred to 4.1.
+
+7. **No moderation of listings in this segment.**
+   *Why:* Sellers already self-cancel listings (3.2b). Buyers can't report spam yet. Moderation queue without reports = unused feature. Defer until buyer reporting exists (4.1).
+
+8. **Dispute resolution doesn't auto-adjust verified_weight.**
+   *Why:* The `WeightTicket.verified_weight_kg` is a physical measurement. If dispute is upheld, an admin should manually issue a corrected ticket — the original stays for audit. This segment only marks the dispute resolved (with note). Future 4.1: auto-reverse payment + adjust.
+
+9. **User list excludes sensitive fields (hashed_password, refresh tokens).**
+   *Why:* Backend `AdminUserListItem` schema only exposes what admin needs for support. Password hashes never leave the DB, never appear in API responses. Enforced by Pydantic schema.
+
+10. **Search is ILIKE on email OR full_name.**
+    *Why:* Admins search by "Anirudh" (name) or "anirudh@..." (email). Both matter. ILIKE is case-insensitive. No full-text index needed at current user count (~50). Add GIN index if users > 10k.
+
+### Operating Notes
+
+- **Adding a new admin action:** add endpoint, add service method, add audit column to affected model (if not already). If audit columns grow > 4, promote to `admin_audit_log` table.
+- **Dispute resolution flow:** supplier marks dispute at `/dashboard/batches/:id` weight panel (from 2.2) → admin reviews at `/admin/disputes` → resolve → supplier sees resolution badge on their batch page.
+- **Activity feed performance:** queries `traceability_events` DESC LIMIT 50. With 90-day seed (~10k events), query < 50ms. Add `(event_type, created_at DESC)` composite index if filtering becomes slow.
+- **Role change cascade:** changing GENERATOR → RECYCLER does NOT auto-create Supplier or recycler-specific records. User keeps their existing Supplier row (if any), just gains/loses role-gated access. Documented but not automated.
+- **Deactivation cascade:** deactivated user cannot log in (auth check blocks), existing access tokens remain valid for up to 30min (JWT TTL). On next refresh, refresh-token rotation blocks (user inactive check). Max 30min tail window — acceptable.
+- **Admin account creation:** only via seed or another admin. No self-registration for ADMIN (from 1.3, still enforced).
+
+### Verification
+
+| Check | Result |
+|---|---|
+| tsc | 0 errors |
+| Frontend tests | 155 (was 145, +10) |
+| Backend tests | 228 (was 220, +8) |
+| Containers | 7/7 healthy |
+| No new npm/pip packages | PASS |
+| Cannot change own role | PASS |
+| Cannot deactivate last admin | PASS |
+| Dispute resolution audited | PASS |
+| Activity feed auto-refreshes | PASS |
+| Search + filter user list | PASS |
+| Modals prevent invalid actions | PASS |
+
+### Deferred to 4.1
+- Admin audit log table (promote from column-based)
+- Buyer reporting → listing moderation queue
+- Automated weight adjustment on dispute upheld
+- Email notification to user on role change / deactivation / dispute resolved
+- Bulk user operations (import, export CSV)
+- Admin action WebSocket stream (replace 30s polling)
+- User impersonation for support debugging
+
+### Reversal / Supersede
+- No breaking changes to existing routes or models.
+- Extends User and WeightTicket models (all columns nullable, no backfill needed).
+- Sidebar admin section now has 5 links (fleet, analytics, users, disputes, activity).
+
+---
+
 

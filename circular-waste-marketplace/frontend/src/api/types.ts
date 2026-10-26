@@ -760,5 +760,69 @@ export interface LeaderboardResponse {
 
 export type LeaderboardPeriod = "week" | "month" | "all_time";
 
+// ─── Segment 3.3c types ───
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  full_name: string;
+  role: "GENERATOR" | "RECYCLER" | "LOGISTICS" | "ADMIN";
+  organization_name: string | null;
+  phone_number: string | null;
+  is_active: boolean;
+  is_verified: boolean;
+  created_at: string;
+  deactivation_reason: string | null;
+  last_role_change_at: string | null;
+}
+
+export interface AdminUserListResponse {
+  items: AdminUser[];
+  total: number;
+}
+
+export interface AdminRoleChangeRequest {
+  new_role: "GENERATOR" | "RECYCLER" | "LOGISTICS" | "ADMIN";
+  reason: string;
+}
+
+export interface AdminDispute {
+  id: string;
+  intake_id: string;
+  batch_code: string;
+  supplier_email: string;
+  declared_weight_kg: number;
+  verified_weight_kg: number;
+  dispute_notes: string;
+  weight_method: string;
+  recorded_at: string;
+  dispute_resolution: "upheld" | "rejected" | null;
+  dispute_resolved_at: string | null;
+}
+
+export interface AdminDisputeListResponse {
+  items: AdminDispute[];
+  total: number;
+}
+
+export interface ActivityEvent {
+  id: string;
+  event_type: string;
+  batch_id: string;
+  batch_code: string | null;
+  actor_user_id: string | null;
+  actor_name: string | null;
+  actor_role: string | null;
+  from_status: string | null;
+  to_status: string | null;
+  metadata_json: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface ActivityFeedResponse {
+  items: ActivityEvent[];
+  total: number;
+}
+
 
 

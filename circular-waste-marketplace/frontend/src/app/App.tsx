@@ -43,6 +43,9 @@ import SellerAnalyticsPage from "@/features/analytics/pages/SellerAnalyticsPage"
 import AdminAnalyticsPage from "@/features/analytics/pages/AdminAnalyticsPage";
 import RewardsPage from "@/features/rewards/pages/RewardsPage";
 import LeaderboardPage from "@/features/rewards/pages/LeaderboardPage";
+import AdminUsersPage from "@/features/admin/pages/AdminUsersPage";
+import AdminDisputesPage from "@/features/admin/pages/AdminDisputesPage";
+import AdminActivityPage from "@/features/admin/pages/AdminActivityPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -352,6 +355,36 @@ export const App: React.FC = () => {
                 <RequireAuth>
                   <RequireRole roles={["ADMIN"]}>
                     <AdminAnalyticsPage />
+                  </RequireRole>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <RequireAuth>
+                  <RequireRole roles={["ADMIN"]}>
+                    <AdminUsersPage />
+                  </RequireRole>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/admin/disputes"
+              element={
+                <RequireAuth>
+                  <RequireRole roles={["ADMIN"]}>
+                    <AdminDisputesPage />
+                  </RequireRole>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/admin/activity"
+              element={
+                <RequireAuth>
+                  <RequireRole roles={["ADMIN"]}>
+                    <AdminActivityPage />
                   </RequireRole>
                 </RequireAuth>
               }

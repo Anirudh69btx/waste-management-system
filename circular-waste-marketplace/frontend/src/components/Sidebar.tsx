@@ -16,6 +16,9 @@ import {
   Gavel,
   Truck,
   Trophy,
+  Users,
+  AlertTriangle,
+  Activity,
 } from "lucide-react";
 import { useAuthStore } from "@/features/auth/authStore";
 import { WalletBadge } from "@/features/rewards/components/WalletBadge";
@@ -96,6 +99,24 @@ export const Sidebar: React.FC = () => {
       to: "/admin/analytics",
       label: "Platform Analytics",
       icon: BarChart3,
+      roles: ["ADMIN"],
+    },
+    {
+      to: "/admin/users",
+      label: "Users",
+      icon: Users,
+      roles: ["ADMIN"],
+    },
+    {
+      to: "/admin/disputes",
+      label: "Disputes",
+      icon: AlertTriangle,
+      roles: ["ADMIN"],
+    },
+    {
+      to: "/admin/activity",
+      label: "Activity",
+      icon: Activity,
       roles: ["ADMIN"],
     },
     {
