@@ -506,6 +506,48 @@ All 25 tests pass covering store hydration, token rotation, route guards, form v
 
 ---
 
+## 🚀 Production Deployment (Segment 4.0)
+
+**Deploy in 30 minutes → see [`docs/deploy.md`](docs/deploy.md)** | **Operations Runbook → see [`docs/operations.md`](docs/operations.md)**
+
+- **Live URL (Placeholder):** `https://yourdomain.com` (API: `https://api.yourdomain.com/api/v1`)
+- **Production Compose:** [`docker-compose.prod.yml`](docker-compose.prod.yml) (pull-based from GHCR, Nginx TLS termination, Certbot auto-renewal)
+- **Production Env Template:** [`.env.prod.example`](.env.prod.example) (50+ documented variables with `CHANGE_ME` placeholders)
+
+```mermaid
+flowchart LR
+    subgraph External["External Services"]
+        DNS["DNS (A Records: @, www, api)"]
+        OSM["OpenStreetMap Tile Servers"]
+        GHCR["GitHub Container Registry (GHCR)"]
+    end
+
+    subgraph VPS["Ubuntu 22.04 VPS (docker-compose.prod.yml)"]
+        Nginx["Nginx 1.27 (TLS 1.2/1.3 :80/:443)"]
+        Certbot["Certbot Sidecar (Auto-Renew)"]
+        FE["Frontend Container (Nginx SPA)"]
+        BE["Backend Container (FastAPI + Gunicorn/Uvicorn)"]
+        CW["Celery Worker + Celery Beat"]
+        PG[("PostgreSQL 15")]
+        RD[("Redis 7.4")]
+        MN[("MinIO S3 Storage")]
+
+        Nginx -->|/| FE
+        Nginx -->|/api/ & /ws/| BE
+        BE --> PG
+        BE --> RD
+        BE --> MN
+        CW --> PG
+        CW --> RD
+    end
+
+    DNS -->|HTTPS :443| Nginx
+    GHCR -->|deploy.sh pull| VPS
+    FE -.->|Map Tiles| OSM
+```
+
+---
+
 ## 🚢 Deployment & Production Topology
 
 ```text

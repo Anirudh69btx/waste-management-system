@@ -1205,4 +1205,99 @@ Deliver seller-facing marketplace workflows (inventory lot inspection, listing c
 
 ---
 
+## Segment 4.0 — Deployment Preparation
+
+**Date:** 2026-10-26
+**Status:** ✅ COMPLETE — prod compose, CI/CD, TLS, backups, runbooks
+
+### What Was Delivered
+
+**Infra (Commit 1):**
+- `docker-compose.prod.yml` — pull-based (no build), nginx in front, certbot sidecar
+- `.env.prod.example` — 50+ vars documented with `CHANGE_ME` placeholders
+- `deploy/nginx/nginx.conf` + `deploy/nginx/conf.d/app.conf` — HTTP→HTTPS redirect, TLS 1.2/1.3, gzip, security headers, WebSocket proxy, static cache
+- `deploy/scripts/first-time-setup.sh` — Ubuntu 22.04 bootstrap (Docker, firewall, certbot initial cert)
+- `deploy/scripts/deploy.sh` — pull, migrate, health-check, rolling backend swap, rollback on failure
+- `deploy/scripts/backup.sh` — nightly pg_dump, 30-day retention
+- `.github/workflows/ci.yml` — backend (ruff + pytest) + frontend (tsc + vitest + build) on every PR
+- `.github/workflows/deploy.yml` — tag → GHCR images → SSH deploy with `deploy.sh`
+
+**Docs (Commit 2):**
+- `docs/deploy.md` — 30-min VPS guide + DNS + secrets + rollback + VPS cost comparison (Hetzner/DigitalOcean/AWS Lightsail)
+- `docs/operations.md` — logs, restarts, migrations, backup restore, secret rotation, scaling, alerts
+- `README.md` — Deployment section + architecture diagram
+
+### Important Decisions
+
+1. **Nginx in front, certbot sidecar.**
+   *Why:* Certbot renews automatically via sidecar loop. Nginx reloads every 6h to pick up renewed certs. Zero manual intervention after first-time setup.
+
+2. **Pull-based prod compose, no local build.**
+   *Why:* Building on the VPS burns CPU (blocks other containers) and requires source access. GHCR images are pre-built, small, cacheable. Deploy becomes `docker compose pull && up -d`.
+
+3. **Zero-downtime deploy with rollback.**
+   *Why:* `deploy.sh` runs migrations, spins up a second backend replica, health-checks it, THEN swaps. If health fails, rolls back to previous tag. No 500s during deploy.
+
+4. **Two-commit split: infra + docs.**
+   *Why:* Infra and docs land independently. If docs need fixing, no need to touch infra. Easier to cherry-pick to main.
+
+5. **First-time-setup runs ONCE, deploy.sh runs FOREVER.**
+   *Why:* Ubuntu apt install of Docker, firewall setup, initial cert — these are bootstrapping steps that must not re-run. `deploy.sh` is safe to run repeatedly.
+
+6. **`.env.prod.example` uses `CHANGE_ME_...` for every secret.**
+   *Why:* Obvious what to change. `openssl rand -hex 32` documented in comments. Reviewer can diff `.env.prod.example` against `.env` and see no leaks.
+
+7. **Backup script dumps to local disk by default, S3 sync commented.**
+   *Why:* Not everyone has S3 configured at deploy time. Local dump works out-of-the-box. Uncomment S3 line when bucket exists.
+
+8. **CI on every PR, deploy only on version tags.**
+   *Why:* PRs get full test coverage before merge. Tag push (v1.0.0) triggers deploy. No surprise deployments on merge.
+
+9. **Hetzner €4/mo recommended as primary.**
+   *Why:* Best price/performance for a hackathon-scale app. 2GB RAM runs all 8 containers. DigitalOcean $6 also fine. AWS Lightsail $5 as third option. Docs include comparison table.
+
+10. **`.env` never committed, `.env.prod.example` is.**
+    *Why:* Pre-flight checked this. If `.env` ever gets tracked, `git rm --cached .env` + force rotation. New check in CI could add `git ls-files .env` assertion — flagged as 4.0b enhancement.
+
+### Operating Notes
+
+- **VPS specs needed:** 2GB RAM minimum, 2GB recommended. 20GB disk (postgres + minio + images). Any provider works.
+- **DNS records required:** A record `@` → VPS IP, A record `www` → VPS IP, A record `api` → VPS IP (or CNAME to `@`).
+- **Secret rotation:** see `docs/operations.md` "Rotate JWT secret". Warning: invalidates all active sessions.
+- **CI secrets:** `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`. Add in GitHub Settings → Secrets.
+- **Monitoring:** uptime probe on `https://yourdomain.com/health` (Better Stack / UptimeRobot free tier). Sentry DSN is optional but recommended.
+- **First deployment risk:** certbot needs port 80 accessible during ACME challenge. Make sure no other webserver is running on 80 before `first-time-setup.sh`.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| docker-compose.prod.yml valid | PASS (`docker compose config`) |
+| Backend production image builds | PASS |
+| Frontend production image builds | PASS |
+| Backend imports in prod image | PASS |
+| Frontend nginx config valid | PASS |
+| .env.prod.example has 50+ vars | PASS |
+| No secrets committed | PASS (grep clean) |
+| App code unchanged | PASS (`git diff --stat backend/app/ frontend/src/` empty) |
+| Backend tests | 220 passed |
+| Frontend tests | 145 passed |
+
+### Deferred to 4.0b/4.1
+- Cloudflare CDN layer (DNS + DDoS protection)
+- Multi-region deployment (only if scaling beyond demo)
+- Real Stripe integration (mocked escrow currently fine for demo)
+- Email notifications via SendGrid/Postmark
+- Database read replicas
+- Automated SSL renewal monitoring (currently certbot sidecar handles it silently)
+- CI check to prevent `.env` from being committed
+- Prometheus + Grafana monitoring stack (currently Sentry optional)
+
+### Reversal / Supersede
+- No app code changed. All infrastructure additions.
+- Extends `docker-compose.yml` (dev) with a production sibling that pulls from GHCR.
+- README updated with deployment section but preserves all dev instructions.
+
+---
+
 
