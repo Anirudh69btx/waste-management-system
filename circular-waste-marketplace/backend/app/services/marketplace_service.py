@@ -23,6 +23,10 @@ from app.schemas.marketplace_schemas import (
     BuyNowRequest,
     OrderCancelRequest,
     ConfirmOrderRequest,
+    BidRejectRequest,
+    OrderShipRequest,
+    OrderDeliverRequest,
+    ListingUpdateRequest,
 )
 from app.services.traceability_service import emit
 
@@ -512,10 +516,10 @@ class MarketplaceService:
                 detail="Only seller or ADMIN can complete order",
             )
 
-        if order.status not in {"escrow_held", "shipped"}:
+        if order.status not in {"escrow_held", "shipped", "delivered"}:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Order must be in escrow_held or shipped to complete (current: {order.status})",
+                detail=f"Order must be in escrow_held, shipped or delivered to complete (current: {order.status})",
             )
 
         now = datetime.now(timezone.utc)
@@ -613,3 +617,237 @@ class MarketplaceService:
         await session.commit()
         await session.refresh(order)
         return order
+
+    # ------------------------------------------------------------------
+    # Segment 3.2b — seller-side flows
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    async def _batch_id_for_listing(
+        session: AsyncSession, listing: MarketplaceListing | None, fallback: uuid.UUID
+    ) -> uuid.UUID:
+        if listing is None or listing.inventory_lot_id is None:
+            return fallback
+        lot = await InventoryRepository.get_by_id(session, listing.inventory_lot_id)
+        return lot.intake_id if lot else fallback
+
+    @staticmethod
+    async def _get_owned_listing(
+        user: User, listing_id: uuid.UUID, session: AsyncSession
+    ) -> MarketplaceListing:
+        """Load listing; non-owners (except ADMIN) get 404 to avoid existence leaks."""
+        listing = await MarketplaceRepository.get_listing_by_id(session, listing_id)
+        if not listing or (user.role != "ADMIN" and listing.seller_id != user.id):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Listing not found",
+            )
+        return listing
+
+    @staticmethod
+    async def list_bids_for_listing(
+        user: User, listing_id: uuid.UUID, session: AsyncSession
+    ) -> list[Bid]:
+        listing = await MarketplaceService._get_owned_listing(user, listing_id, session)
+        return await MarketplaceRepository.list_bids_for_listing(session, listing.id)
+
+    @staticmethod
+    async def reject_bid(
+        user: User,
+        listing_id: uuid.UUID,
+        bid_id: uuid.UUID,
+        payload: BidRejectRequest | None,
+        session: AsyncSession,
+        request_id: str | None = None,
+    ) -> Bid:
+        listing = await MarketplaceService._get_owned_listing(user, listing_id, session)
+
+        bid = await MarketplaceRepository.get_bid_by_id(session, bid_id)
+        if not bid or bid.listing_id != listing.id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Bid not found for listing",
+            )
+        if bid.status != "pending":
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Bid status must be 'pending' (current: {bid.status})",
+            )
+
+        bid = await MarketplaceRepository.update_bid_status(session, bid.id, "rejected")
+
+        batch_id = await MarketplaceService._batch_id_for_listing(session, listing, listing.id)
+        await emit(
+            session,
+            batch_id=batch_id,
+            event_type="bid.rejected",
+            actor=user,
+            from_status="pending",
+            to_status="rejected",
+            metadata={
+                "bid_id": str(bid.id),
+                "listing_id": str(listing.id),
+                "note": payload.note if payload else None,
+            },
+            request_id=request_id,
+        )
+
+        await session.commit()
+        await session.refresh(bid)
+        return bid
+
+    @staticmethod
+    async def ship_order(
+        user: User,
+        order_id: uuid.UUID,
+        payload: OrderShipRequest | None,
+        session: AsyncSession,
+        request_id: str | None = None,
+    ) -> PurchaseOrder:
+        order = await MarketplaceRepository.get_order_by_id(session, order_id)
+        if not order or (user.role != "ADMIN" and order.seller_user_id != user.id):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Order not found",
+            )
+        if order.status not in {"escrow_held", "confirmed"}:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Order must be escrow_held or confirmed to ship (current: {order.status})",
+            )
+
+        from_status = order.status
+        order.status = "shipped"
+
+        listing = await MarketplaceRepository.get_listing_by_id(session, order.listing_id)
+        batch_id = await MarketplaceService._batch_id_for_listing(session, listing, order.listing_id)
+        await emit(
+            session,
+            batch_id=batch_id,
+            event_type="order.shipped",
+            actor=user,
+            from_status=from_status,
+            to_status="shipped",
+            metadata={
+                "order_id": str(order.id),
+                "order_code": order.order_code,
+                "tracking_number": payload.tracking_number if payload else None,
+                "note": payload.note if payload else None,
+            },
+            request_id=request_id,
+        )
+
+        await session.commit()
+        await session.refresh(order)
+        return order
+
+    @staticmethod
+    async def deliver_order(
+        user: User,
+        order_id: uuid.UUID,
+        payload: OrderDeliverRequest | None,
+        session: AsyncSession,
+        request_id: str | None = None,
+    ) -> PurchaseOrder:
+        order = await MarketplaceRepository.get_order_by_id(session, order_id)
+        if not order or (
+            user.role != "ADMIN" and user.id not in {order.buyer_user_id, order.seller_user_id}
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Order not found",
+            )
+        if user.role != "ADMIN" and order.buyer_user_id != user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only buyer or ADMIN can confirm delivery",
+            )
+        if order.status != "shipped":
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Order must be shipped to mark delivered (current: {order.status})",
+            )
+
+        order.status = "delivered"
+
+        listing = await MarketplaceRepository.get_listing_by_id(session, order.listing_id)
+        batch_id = await MarketplaceService._batch_id_for_listing(session, listing, order.listing_id)
+        await emit(
+            session,
+            batch_id=batch_id,
+            event_type="order.delivered",
+            actor=user,
+            from_status="shipped",
+            to_status="delivered",
+            metadata={
+                "order_id": str(order.id),
+                "order_code": order.order_code,
+                "note": payload.note if payload else None,
+            },
+            request_id=request_id,
+        )
+
+        await session.commit()
+        await session.refresh(order)
+        return order
+
+    @staticmethod
+    async def cancel_listing(
+        user: User,
+        listing_id: uuid.UUID,
+        payload: ListingUpdateRequest,
+        session: AsyncSession,
+        request_id: str | None = None,
+    ) -> MarketplaceListing:
+        listing = await MarketplaceService._get_owned_listing(user, listing_id, session)
+
+        if payload.status != "cancelled":
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Only status='cancelled' is supported",
+            )
+        if listing.status != "active":
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Only active listings can be cancelled (current: {listing.status})",
+            )
+
+        listing.status = "cancelled"
+
+        # Reject outstanding bids so buyers are not left hanging
+        rejected_bid_ids: list[str] = []
+        for bid in await MarketplaceRepository.list_bids_for_listing(session, listing.id):
+            if bid.status == "pending":
+                await MarketplaceRepository.update_bid_status(session, bid.id, "rejected")
+                rejected_bid_ids.append(str(bid.id))
+
+        batch_id: uuid.UUID = listing.id
+        lot_from_status: str | None = None
+        if listing.inventory_lot_id is not None:
+            lot = await InventoryRepository.get_by_id(session, listing.inventory_lot_id)
+            if lot:
+                batch_id = lot.intake_id
+                lot_from_status = lot.status
+                if lot.status == "reserved":
+                    await InventoryRepository.update_status(session, lot.id, "available")
+
+        await emit(
+            session,
+            batch_id=batch_id,
+            event_type="listing.cancelled",
+            actor=user,
+            from_status="active",
+            to_status="cancelled",
+            metadata={
+                "listing_id": str(listing.id),
+                "inventory_lot_id": str(listing.inventory_lot_id) if listing.inventory_lot_id else None,
+                "lot_from_status": lot_from_status,
+                "rejected_bid_ids": rejected_bid_ids,
+                "reason": payload.reason,
+            },
+            request_id=request_id,
+        )
+
+        await session.commit()
+        await session.refresh(listing)
+        return listing

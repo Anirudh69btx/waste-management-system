@@ -36,6 +36,22 @@ async def get_batch_timeline(
 
 
 @router.get(
+    "/batch/{batch_id}",
+    response_model=TraceabilityTimelineResponse,
+)
+async def get_batch_timeline_alias(
+    batch_id: uuid.UUID,
+    db: AsyncSession = Depends(get_async_session),
+) -> TraceabilityTimelineResponse:
+    """Alias of GET /traceability/{batch_id} (Segment 3.2b; path used by the frontend client)."""
+    events = await TraceabilityRepository.list_for_batch(db, batch_id)
+    return TraceabilityTimelineResponse(
+        batch_id=batch_id,
+        events=[TraceabilityEventRead.model_validate(e) for e in events],
+    )
+
+
+@router.get(
     "/events/recent",
     response_model=list[TraceabilityEventRead],
 )

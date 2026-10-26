@@ -51,6 +51,7 @@ from app.routers import (
     health,
     fleet,
     traceability,
+    inventory,
 )
 
 settings = get_settings()
@@ -331,6 +332,7 @@ def create_application() -> FastAPI:
     app.include_router(ai_assessment.router, prefix=prefix) # /api/v1/ai/...
     app.include_router(fleet.router, prefix=prefix)         # /api/v1/fleet/...
     app.include_router(traceability.router, prefix=prefix)  # /api/v1/traceability/...
+    app.include_router(inventory.router, prefix=prefix)     # /api/v1/inventory/...
 
     return app
 

@@ -25,6 +25,10 @@ from app.schemas.marketplace_schemas import (
     OrderListResponse,
     OrderCancelRequest,
     ConfirmOrderRequest,
+    BidRejectRequest,
+    OrderShipRequest,
+    OrderDeliverRequest,
+    ListingUpdateRequest,
 )
 from app.services.marketplace_service import MarketplaceService
 
@@ -61,7 +65,7 @@ async def list_listings(
     status_filter: str | None = Query("active", alias="status"),
     min_price: float | None = Query(None),
     max_price: float | None = Query(None),
-    seller_id: uuid.UUID | None = Query(None),
+    seller_id: str | None = Query(None, description="Seller UUID or 'me'"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     user: User = Depends(get_current_active_user),
@@ -78,7 +82,16 @@ async def list_listings(
     if max_price is not None:
         filters["price_max"] = max_price
     if seller_id:
-        filters["seller_id"] = seller_id
+        if seller_id == "me":
+            filters["seller_id"] = user.id
+        else:
+            try:
+                filters["seller_id"] = uuid.UUID(seller_id)
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="seller_id must be a UUID or 'me'",
+                )
 
     pagination = {"skip": (page - 1) * page_size, "limit": page_size}
     listings, total = await MarketplaceService.list_listings(
@@ -144,8 +157,10 @@ async def list_bids_for_listing(
     user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_async_session),
 ) -> list[BidRead]:
-    """List ranked bids for a listing."""
-    bids = await MarketplaceRepository.list_bids_for_listing(db, listing_id)
+    """List ranked bids for a listing (listing seller or ADMIN only; others get 404)."""
+    bids = await MarketplaceService.list_bids_for_listing(
+        user=user, listing_id=listing_id, session=db
+    )
     return [BidRead.model_validate(b) for b in bids]
 
 
@@ -335,4 +350,96 @@ async def get_order(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access forbidden",
         )
+    return PurchaseOrderRead.model_validate(order)
+
+
+# --- Segment 3.2b: seller-side flows ---
+
+@router.patch(
+    "/listings/{listing_id}",
+    response_model=ListingRead,
+)
+async def update_listing(
+    listing_id: uuid.UUID,
+    payload: ListingUpdateRequest,
+    request: Request,
+    user: User = Depends(require_roles("RECYCLER", "ADMIN")),
+    db: AsyncSession = Depends(get_async_session),
+) -> ListingRead:
+    """Seller or ADMIN cancels an active listing (only cancel supported)."""
+    listing = await MarketplaceService.cancel_listing(
+        user=user,
+        listing_id=listing_id,
+        payload=payload,
+        session=db,
+        request_id=request.headers.get("x-request-id"),
+    )
+    return ListingRead.model_validate(listing)
+
+
+@router.post(
+    "/listings/{listing_id}/bids/{bid_id}/reject",
+    response_model=BidRead,
+)
+async def reject_bid(
+    listing_id: uuid.UUID,
+    bid_id: uuid.UUID,
+    request: Request,
+    payload: BidRejectRequest | None = None,
+    user: User = Depends(require_roles("RECYCLER", "ADMIN")),
+    db: AsyncSession = Depends(get_async_session),
+) -> BidRead:
+    """Seller or ADMIN rejects a pending bid."""
+    bid = await MarketplaceService.reject_bid(
+        user=user,
+        listing_id=listing_id,
+        bid_id=bid_id,
+        payload=payload,
+        session=db,
+        request_id=request.headers.get("x-request-id"),
+    )
+    return BidRead.model_validate(bid)
+
+
+@router.patch(
+    "/orders/{order_id}/ship",
+    response_model=PurchaseOrderRead,
+)
+async def ship_order(
+    order_id: uuid.UUID,
+    request: Request,
+    payload: OrderShipRequest | None = None,
+    user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_session),
+) -> PurchaseOrderRead:
+    """Seller or ADMIN marks an escrow-held order as shipped."""
+    order = await MarketplaceService.ship_order(
+        user=user,
+        order_id=order_id,
+        payload=payload,
+        session=db,
+        request_id=request.headers.get("x-request-id"),
+    )
+    return PurchaseOrderRead.model_validate(order)
+
+
+@router.patch(
+    "/orders/{order_id}/deliver",
+    response_model=PurchaseOrderRead,
+)
+async def deliver_order(
+    order_id: uuid.UUID,
+    request: Request,
+    payload: OrderDeliverRequest | None = None,
+    user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_session),
+) -> PurchaseOrderRead:
+    """Buyer or ADMIN confirms receipt of a shipped order."""
+    order = await MarketplaceService.deliver_order(
+        user=user,
+        order_id=order_id,
+        payload=payload,
+        session=db,
+        request_id=request.headers.get("x-request-id"),
+    )
     return PurchaseOrderRead.model_validate(order)

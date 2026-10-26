@@ -99,3 +99,27 @@ class OrderCancelRequest(BaseModel):
 class ConfirmOrderRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     note: str | None = Field(None, max_length=500)
+
+
+# --- Segment 3.2b: seller-side request bodies ---
+
+class BidRejectRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    note: str | None = Field(None, max_length=500)
+
+
+class OrderShipRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    tracking_number: str | None = Field(None, max_length=100)
+    note: str | None = Field(None, max_length=500)
+
+
+class OrderDeliverRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    note: str | None = Field(None, max_length=500)
+
+
+class ListingUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["active", "cancelled"] | None = None
+    reason: str | None = Field(None, max_length=500)
